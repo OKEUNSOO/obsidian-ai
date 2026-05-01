@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { findCodexCli } from '../codex/CodexCliResolver';
+import { buildCodexSkillInstructions } from '../skills/SkillCatalog';
 import type { ObsidianCodeSettings } from '../types/settings';
 import type { ProviderEvent, ProviderQuery } from './types';
 
@@ -94,6 +95,10 @@ You are an expert AI assistant embedded in an Obsidian vault. You help the user 
 - Confirm what was created or changed after completing file operations.`;
 
     const parts: string[] = [system];
+    const skillInstructions = buildCodexSkillInstructions(input.cwd);
+    if (skillInstructions) {
+      parts.push(`\n\n${skillInstructions}`);
+    }
 
     if (input.activeNotePath && input.activeNoteContent) {
       parts.push(`\n\n<active_obsidian_note path="${input.activeNotePath}">\n${input.activeNoteContent}\n</active_obsidian_note>`);

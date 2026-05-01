@@ -1,5 +1,5 @@
-import type { App, TFile } from 'obsidian';
 import * as fs from 'fs';
+import type { App, TFile } from 'obsidian';
 import * as os from 'os';
 import * as path from 'path';
 

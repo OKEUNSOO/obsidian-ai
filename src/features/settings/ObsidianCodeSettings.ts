@@ -215,7 +215,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
     const skillsDesc = containerEl.createDiv({ cls: 'oc-skills-settings-desc' });
     skillsDesc.createEl('p', {
-      text: 'Obsidian 전용 스킬을 설치하여 Claude가 Obsidian Flavored Markdown, 위키링크, 콜아웃, 프로퍼티, JSON Canvas 형식을 더 잘 이해하도록 도와줍니다.',
+      text: 'Obsidian 전용 스킬을 설치하여 Claude와 Codex가 Obsidian Flavored Markdown, 위키링크, 콜아웃, 프로퍼티, JSON Canvas 형식을 더 잘 이해하도록 도와줍니다.',
       cls: 'setting-item-description',
     });
 
@@ -224,8 +224,8 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Obsidian 스킬')
       .setDesc(skillsInstalled
-        ? '✅ 설치됨 - Claude가 Obsidian 문법을 더 잘 이해합니다.'
-        : '미설치 - 클릭하여 Obsidian 지원 스킬을 설치하세요.')
+        ? '✅ 설치됨 - Claude와 Codex가 함께 사용하는 .agents/skills에 저장되어 있습니다.'
+        : '미설치 - 클릭하여 Obsidian 지원 스킬을 .agents/skills에 설치하세요.')
       .addButton((button) => {
         if (skillsInstalled) {
           button

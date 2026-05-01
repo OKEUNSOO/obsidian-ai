@@ -9,6 +9,7 @@ import type { WorkspaceLeaf } from 'obsidian';
 import { ItemView, Notice, setIcon } from 'obsidian';
 
 import { SlashCommandManager } from '../../core/commands';
+import { draftVisualPrompt, generateVisualAsset } from '../../core/images/VisualAssetService';
 import type { ClaudeModel, ThinkingBudget } from '../../core/types';
 import { DEFAULT_CLAUDE_MODELS, DEFAULT_CODEX_MODELS, DEFAULT_THINKING_BUDGET, VIEW_TYPE_OBSIDIAN_CODE } from '../../core/types';
 import type ObsidianCodePlugin from '../../main';
@@ -30,7 +31,6 @@ import {
   TodoPanel,
 } from '../../ui';
 import { ProviderSegmentedControl } from '../../ui/components/ProviderSegmentedControl';
-import { generateVisualAsset, draftVisualPrompt } from '../../core/images/VisualAssetService';
 import { ImageGenerationModal } from '../../ui/modals/ImageGenerationModal';
 import { getVaultPath } from '../../utils/path';
 import { LOGO_SVG } from './constants';
@@ -230,7 +230,7 @@ export class ObsidianCodeView extends ItemView {
 
   private buildHeader(header: HTMLElement) {
     const titleContainer = header.createDiv({ cls: 'oc-title' });
-    const logoEl = titleContainer.createSpan({ cls: 'oc-logo', text: LOGO_SVG });
+    titleContainer.createSpan({ cls: 'oc-logo', text: LOGO_SVG });
     titleContainer.createEl('h4', { text: 'Obsidian Code' });
 
     const headerActions = header.createDiv({ cls: 'oc-header-actions' });

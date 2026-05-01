@@ -1,7 +1,8 @@
 /**
  * Obsidian Skills Installer
  *
- * Installs pre-bundled Obsidian skills to the vault's .claude/skills folder.
+ * Installs pre-bundled Obsidian skills to the vault's shared .agents/skills folder.
+ * A .claude/skills mirror is maintained for Claude Code compatibility.
  */
 
 import * as fs from 'fs';
@@ -9,6 +10,15 @@ import type { App } from 'obsidian';
 import { Notice, requestUrl } from 'obsidian';
 import * as path from 'path';
 
+import {
+  ensureSharedSkillsMigrated,
+  getSharedSkillPath,
+  getSharedSkillsPath,
+  loadSkillCatalog,
+  mirrorSharedSkillsToClaude,
+  mirrorSkillToClaude,
+  removeSkillFromBothStores,
+} from '../../core/skills/SkillCatalog';
 import { getVaultPath } from '../../utils/path';
 
 /** Bundled skill files to install */
@@ -321,17 +331,23 @@ export function isObsidianSkillsInstalled(app: App): boolean {
   const vaultPath = getVaultPath(app);
   if (!vaultPath) return false;
 
-  const skillsPath = path.join(vaultPath, '.claude', 'skills', 'obsidian-markdown');
+  ensureSharedSkillsMigrated(vaultPath);
+  mirrorSharedSkillsToClaude(vaultPath);
+
+  const skillsPath = getSharedSkillPath(vaultPath, 'obsidian-markdown');
   return fs.existsSync(skillsPath);
 }
 
-/** Get project-local installed skills from vault .claude/skills/. */
+/** Get project-local installed skills from vault .agents/skills/. */
 export function getInstalledSkills(app: App): InstalledSkill[] {
   const vaultPath = getVaultPath(app);
   if (!vaultPath) return [];
 
-  const vaultSkillsPath = path.join(vaultPath, '.claude', 'skills');
-  const vaultSkills = loadSkillsFromPath(vaultSkillsPath, false);
+  const vaultSkills = loadSkillCatalog(vaultPath).map((skill) => ({
+    ...skill,
+    isBuiltIn: BUILT_IN_SKILLS.includes(skill.name),
+    isGlobal: false,
+  }));
 
   // Sort: built-in skills first, then alphabetically
   return vaultSkills.sort((a, b) => {
@@ -339,54 +355,6 @@ export function getInstalledSkills(app: App): InstalledSkill[] {
     if (!a.isBuiltIn && b.isBuiltIn) return 1;
     return a.name.localeCompare(b.name);
   });
-}
-
-/**
- * Load skills from a specific directory path.
- */
-function loadSkillsFromPath(skillsBasePath: string, isGlobal: boolean): InstalledSkill[] {
-  const skills: InstalledSkill[] = [];
-
-  if (!fs.existsSync(skillsBasePath)) {
-    return skills;
-  }
-
-  try {
-    const entries = fs.readdirSync(skillsBasePath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-
-      const skillDir = path.join(skillsBasePath, entry.name);
-      const skillFilePath = path.join(skillDir, 'SKILL.md');
-
-      if (!fs.existsSync(skillFilePath)) continue;
-
-      // Read skill file to extract description
-      let description = '';
-      try {
-        const content = fs.readFileSync(skillFilePath, 'utf-8');
-        const descMatch = content.match(/^---\s*[\s\S]*?description:\s*([^\r\n]+)/);
-        if (descMatch && descMatch[1]) {
-          description = descMatch[1].trim();
-        }
-      } catch {
-        // Ignore read errors
-      }
-
-      skills.push({
-        name: entry.name,
-        description: description || 'No description available',
-        path: skillDir,
-        isBuiltIn: BUILT_IN_SKILLS.includes(entry.name),
-        isGlobal,
-      });
-    }
-  } catch {
-    // Ignore directory read errors
-  }
-
-  return skills;
 }
 
 /** Remove a specific skill by name */
@@ -398,14 +366,15 @@ export async function removeSkill(app: App, skillName: string): Promise<boolean>
   }
 
   try {
-    const skillPath = path.join(vaultPath, '.claude', 'skills', skillName);
+    ensureSharedSkillsMigrated(vaultPath);
+    const skillPath = getSharedSkillPath(vaultPath, skillName);
 
     if (!fs.existsSync(skillPath)) {
       new Notice(`Skill "${skillName}" not found`);
       return false;
     }
 
-    fs.rmSync(skillPath, { recursive: true });
+    removeSkillFromBothStores(vaultPath, skillName);
     new Notice(`Skill "${skillName}" removed`);
     return true;
   } catch (error) {
@@ -425,7 +394,8 @@ export async function installObsidianSkills(app: App): Promise<boolean> {
 
   try {
     // Create directories
-    const skillsBasePath = path.join(vaultPath, '.claude', 'skills');
+    ensureSharedSkillsMigrated(vaultPath);
+    const skillsBasePath = getSharedSkillsPath(vaultPath);
     const obsidianMarkdownPath = path.join(skillsBasePath, 'obsidian-markdown');
     const jsonCanvasPath = path.join(skillsBasePath, 'json-canvas');
 
@@ -446,7 +416,10 @@ export async function installObsidianSkills(app: App): Promise<boolean> {
       'utf-8'
     );
 
-    new Notice('✅ Obsidian Skills installed successfully!');
+    mirrorSkillToClaude(vaultPath, 'obsidian-markdown');
+    mirrorSkillToClaude(vaultPath, 'json-canvas');
+
+    new Notice('✅ Obsidian Skills installed successfully for Claude and Codex!');
     return true;
   } catch (error) {
     console.error('Failed to install Obsidian Skills:', error);
@@ -464,17 +437,8 @@ export async function uninstallObsidianSkills(app: App): Promise<boolean> {
   }
 
   try {
-    const skillsBasePath = path.join(vaultPath, '.claude', 'skills');
-    const obsidianMarkdownPath = path.join(skillsBasePath, 'obsidian-markdown');
-    const jsonCanvasPath = path.join(skillsBasePath, 'json-canvas');
-
-    // Remove skill directories
-    if (fs.existsSync(obsidianMarkdownPath)) {
-      fs.rmSync(obsidianMarkdownPath, { recursive: true });
-    }
-    if (fs.existsSync(jsonCanvasPath)) {
-      fs.rmSync(jsonCanvasPath, { recursive: true });
-    }
+    removeSkillFromBothStores(vaultPath, 'obsidian-markdown');
+    removeSkillFromBothStores(vaultPath, 'json-canvas');
 
     new Notice('Obsidian Skills removed');
     return true;
@@ -613,7 +577,8 @@ export async function installSkillFromUrl(app: App, url: string): Promise<boolea
       throw new Error('Could not determine skill name. Please ensure the SKILL.md has a "name" field in frontmatter.');
     }
 
-    const skillsBasePath = path.join(vaultPath, '.claude', 'skills');
+    ensureSharedSkillsMigrated(vaultPath);
+    const skillsBasePath = getSharedSkillsPath(vaultPath);
     const skillDir = path.join(skillsBasePath, skillName);
 
     if (!fs.existsSync(skillDir)) {
@@ -621,6 +586,7 @@ export async function installSkillFromUrl(app: App, url: string): Promise<boolea
     }
 
     fs.writeFileSync(path.join(skillDir, 'SKILL.md'), content, 'utf-8');
+    mirrorSkillToClaude(vaultPath, skillName);
 
     new Notice(`✅ Skill "${skillName}" installed successfully!`);
     return true;
