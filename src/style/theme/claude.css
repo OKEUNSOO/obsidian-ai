@@ -1,0 +1,9 @@
+/* Claude theme variables */
+.oc-container[data-provider="claude"] {
+  --ai-primary: #F97316;
+  --ai-primary-light: #FB923C;
+  --ai-msg-bg: rgba(249, 115, 22, 0.06);
+  --ai-msg-border: rgba(249, 115, 22, 0.18);
+  --ai-tab-shadow: 0 2px 8px rgba(249, 115, 22, 0.25);
+  --ai-divider: linear-gradient(90deg, #F97316, #FB923C, transparent);
+}

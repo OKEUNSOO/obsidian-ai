@@ -1,0 +1,7 @@
+{
+  "tool_name": "Read",
+  "tool_input_preview": "{\"file_path\":\"/Users/eunsu/Documents/career/.obsidian/plugins/clauder/src/core/types\"}",
+  "error": "EISDIR: illegal operation on a directory, read '/Users/eunsu/Documents/career/.obsidian/plugins/clauder/src/core/types'",
+  "timestamp": "2026-05-01T00:42:28.123Z",
+  "retry_count": 2
+}

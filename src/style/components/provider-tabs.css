@@ -1,0 +1,45 @@
+/* src/style/components/provider-tabs.css */
+.oc-provider-tabs {
+  display: flex;
+  padding: 6px 8px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  gap: 4px;
+}
+
+.oc-provider-tabs__control {
+  display: flex;
+  background: var(--background-primary);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+  flex: 1;
+}
+
+.oc-provider-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 0;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+  border: none;
+  background: transparent;
+}
+
+.oc-provider-tab[data-active="true"] {
+  background: var(--ai-primary);
+  color: #fff;
+  box-shadow: var(--ai-tab-shadow);
+}
+
+.oc-provider-divider {
+  height: 2px;
+  background: var(--ai-divider);
+}

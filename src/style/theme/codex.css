@@ -1,0 +1,9 @@
+/* Codex theme variables */
+.oc-container[data-provider="codex"] {
+  --ai-primary: #8B5CF6;
+  --ai-primary-light: #A78BFA;
+  --ai-msg-bg: rgba(139, 92, 246, 0.06);
+  --ai-msg-border: rgba(139, 92, 246, 0.18);
+  --ai-tab-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+  --ai-divider: linear-gradient(90deg, transparent, #8B5CF6, #A78BFA);
+}

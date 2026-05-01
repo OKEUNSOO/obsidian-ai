@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-ai",
+  "name": "ObsidianAI",
+  "version": "2.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Claude & Codex unified AI assistant with tab switching, image generation, and memory map.",
+  "author": "reallygood83",
+  "authorUrl": "https://github.com/reallygood83",
+  "isDesktopOnly": true
+}
