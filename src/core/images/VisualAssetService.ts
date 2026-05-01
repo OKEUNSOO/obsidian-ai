@@ -1,4 +1,6 @@
 import type { App, TFile } from 'obsidian';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import type { ImageMode, VisualOutputType } from './ImagePromptBuilder';
@@ -54,7 +56,59 @@ export interface GeneratedVisualAsset {
   transcript: string;
 }
 
+/** Finds the most recently modified file with a given extension in a directory tree after a given timestamp. */
+function findLatestFileInDir(dir: string, ext: string, afterMs: number): string | null {
+  const SKIP = new Set(['.obsidian', 'node_modules', '.git', '.oc-cache']);
+  let bestFile: string | null = null;
+  let bestMtime = 0;
+  const walk = (d: string) => {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (SKIP.has(entry.name)) continue;
+      const full = path.join(d, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!entry.name.toLowerCase().endsWith(ext)) continue;
+      try {
+        const { mtimeMs } = fs.statSync(full);
+        if (mtimeMs > afterMs && mtimeMs > bestMtime) { bestFile = full; bestMtime = mtimeMs; }
+      } catch { /* skip */ }
+    }
+  };
+  walk(dir);
+  return bestFile;
+}
+
+/** Finds the most recently created PNG in ~/.codex/generated_images/ after a given timestamp. */
+function findLatestCodexImage(afterMs: number): string | null {
+  const dir = path.join(os.homedir(), '.codex', 'generated_images');
+  try {
+    let bestFile: string | null = null;
+    let bestMtime = 0;
+    const walk = (d: string) => {
+      for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+        const full = path.join(d, entry.name);
+        if (entry.isDirectory()) { walk(full); continue; }
+        if (!entry.name.toLowerCase().endsWith('.png')) continue;
+        const { mtimeMs } = fs.statSync(full);
+        if (mtimeMs > afterMs && mtimeMs > bestMtime) {
+          bestFile = full;
+          bestMtime = mtimeMs;
+        }
+      }
+    };
+    walk(dir);
+    return bestFile;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateVisualAsset(request: GenerateVisualAssetRequest): Promise<GeneratedVisualAsset> {
+  if (request.file.extension.toLowerCase() !== 'md') {
+    throw new Error('이미지 생성 결과는 Markdown 노트에만 삽입할 수 있습니다.');
+  }
+
   request.onProgress?.('Preparing attachment folder...');
   const folder = request.mediaFolder.trim() || 'attachments/codexian';
   const normalizedFolder = folder.replace(/^\/+|\/+$/g, '');
@@ -63,6 +117,7 @@ export async function generateVisualAsset(request: GenerateVisualAssetRequest): 
   const extension = request.outputType === 'png' ? 'png' : 'svg';
   const filename = `${sanitizeName(`${request.file.basename}-${request.mode}`)}-${Date.now()}.${extension}`;
   const vaultRelativePath = path.posix.join(normalizedFolder, filename);
+  const vaultAbsolutePath = path.join(request.vaultPath, ...vaultRelativePath.split('/'));
 
   const fallbackPrompt = buildImagePrompt({
     mode: request.mode,
@@ -78,6 +133,7 @@ export async function generateVisualAsset(request: GenerateVisualAssetRequest): 
     ? buildPngGenerationPrompt(vaultRelativePath, visualPrompt)
     : buildSvgGenerationPrompt(vaultRelativePath, visualPrompt);
 
+  const startedAt = Date.now();
   let transcript = '';
   request.onProgress?.(`Asking Codex CLI to create the ${extension.toUpperCase()}...`);
   for await (const event of request.agent.query({
@@ -90,6 +146,27 @@ export async function generateVisualAsset(request: GenerateVisualAssetRequest): 
     if (event.type === 'text') transcript += event.content;
     if (event.type === 'progress') request.onProgress?.(`Codex: ${event.content}`);
     if (event.type === 'error') transcript += `\nERROR: ${event.content}`;
+  }
+
+  // If PNG not at expected path: try to find and copy it from known locations
+  if (request.outputType === 'png' && !(await request.app.vault.adapter.exists(vaultRelativePath))) {
+    request.onProgress?.('이미지를 vault로 복사 중...');
+    // 1. Check ~/.codex/generated_images/
+    const codexImage = findLatestCodexImage(startedAt - 5000);
+    if (codexImage) {
+      fs.copyFileSync(codexImage, vaultAbsolutePath);
+    } else {
+      // 2. Codex may have saved it directly in the vault (e.g. assets/) — find newest PNG in vault
+      const vaultImage = findLatestFileInDir(request.vaultPath, '.png', startedAt - 5000);
+      if (vaultImage && vaultImage !== vaultAbsolutePath) {
+        // Already in vault, just use its relative path
+        const rel = path.relative(request.vaultPath, vaultImage).split(path.sep).join('/');
+        request.onProgress?.(`Embedding generated PNG at the top of the note...`);
+        await request.app.vault.process(request.file, (content) => embedAtTop(content, rel));
+        request.onProgress?.(`Visual embedded: ${rel}`);
+        return { path: rel, transcript: `Generated prompt:\n${visualPrompt}\n\n${transcript}` };
+      }
+    }
   }
 
   if (!(await request.app.vault.adapter.exists(vaultRelativePath))) {

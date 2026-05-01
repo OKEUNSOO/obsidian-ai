@@ -6,7 +6,7 @@
  */
 
 import type { WorkspaceLeaf } from 'obsidian';
-import { ItemView, setIcon } from 'obsidian';
+import { ItemView, Notice, setIcon } from 'obsidian';
 
 import { SlashCommandManager } from '../../core/commands';
 import type { ClaudeModel, ThinkingBudget } from '../../core/types';
@@ -30,6 +30,7 @@ import {
   TodoPanel,
 } from '../../ui';
 import { ProviderSegmentedControl } from '../../ui/components/ProviderSegmentedControl';
+import { generateVisualAsset, draftVisualPrompt } from '../../core/images/VisualAssetService';
 import { ImageGenerationModal } from '../../ui/modals/ImageGenerationModal';
 import { getVaultPath } from '../../utils/path';
 import { LOGO_SVG } from './constants';
@@ -229,17 +230,7 @@ export class ObsidianCodeView extends ItemView {
 
   private buildHeader(header: HTMLElement) {
     const titleContainer = header.createDiv({ cls: 'oc-title' });
-    const logoEl = titleContainer.createSpan({ cls: 'oc-logo' });
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', LOGO_SVG.viewBox);
-    svg.setAttribute('width', LOGO_SVG.width);
-    svg.setAttribute('height', LOGO_SVG.height);
-    svg.setAttribute('fill', 'none');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', LOGO_SVG.path);
-    path.setAttribute('fill', LOGO_SVG.fill);
-    svg.appendChild(path);
-    logoEl.appendChild(svg);
+    const logoEl = titleContainer.createSpan({ cls: 'oc-logo', text: LOGO_SVG });
     titleContainer.createEl('h4', { text: 'Obsidian Code' });
 
     const headerActions = header.createDiv({ cls: 'oc-header-actions' });
@@ -430,10 +421,7 @@ export class ObsidianCodeView extends ItemView {
     this.auxButtonsRow = auxRow;
 
     const imgBtn = auxRow.createEl('button', { cls: 'oc-aux-btn', text: '🎨 이미지 생성' });
-    imgBtn.addEventListener('click', () => {
-      const modal = new ImageGenerationModal(this.plugin.app);
-      modal.open();
-    });
+    imgBtn.addEventListener('click', () => { void this.handleImageGeneration(); });
 
     const memBtn = auxRow.createEl('button', { cls: 'oc-aux-btn', text: '🗺 메모리맵' });
     memBtn.addEventListener('click', async () => {
@@ -684,6 +672,68 @@ export class ObsidianCodeView extends ItemView {
     if (!this.auxButtonsRow) return;
     const isCodex = this.plugin.providerManager?.activeProvider === 'codex';
     this.auxButtonsRow.style.display = isCodex ? '' : 'none';
+  }
+
+  private async handleImageGeneration(): Promise<void> {
+    const file = this.plugin.app.workspace.getActiveFile();
+    if (!file) {
+      new Notice('이미지를 생성하려면 노트를 열어주세요.');
+      return;
+    }
+    if (file.extension.toLowerCase() !== 'md') {
+      new Notice('이미지 생성은 Markdown 노트에서만 사용할 수 있습니다.');
+      return;
+    }
+
+    const modal = new ImageGenerationModal(this.plugin.app);
+    const input = await modal.openAndWait();
+    if (!input) return;
+
+    const vaultPath = getVaultPath(this.plugin.app);
+    if (!vaultPath) {
+      new Notice('Vault 경로를 확인할 수 없습니다.');
+      return;
+    }
+    const noteContent = await this.plugin.app.vault.read(file);
+    const mediaFolder = this.plugin.settings.mediaFolder || 'attachments/codexian';
+
+    const notice = new Notice('Codex 이미지 생성 중...', 0);
+    try {
+      const draftedPrompt = await draftVisualPrompt({
+        app: this.plugin.app,
+        agent: this.plugin.codexProvider,
+        vaultPath,
+        file,
+        mediaFolder,
+        mode: input.mode,
+        outputType: input.outputType,
+        userPrompt: input.prompt,
+        noteContent,
+        onProgress: (msg) => { notice.setMessage(`Codex: ${msg}`); },
+      });
+
+      await generateVisualAsset({
+        app: this.plugin.app,
+        agent: this.plugin.codexProvider,
+        vaultPath,
+        file,
+        mediaFolder,
+        mode: input.mode,
+        outputType: input.outputType,
+        userPrompt: input.prompt,
+        generatedPrompt: draftedPrompt,
+        noteContent,
+        onProgress: (msg) => { notice.setMessage(`Codex: ${msg}`); },
+      });
+
+      notice.hide();
+      new Notice('✅ 이미지 생성 완료! 노트 상단에 삽입됐습니다.');
+    } catch (err) {
+      notice.hide();
+      const msg = err instanceof Error ? err.message : String(err);
+      new Notice(`❌ 이미지 생성 실패: ${msg}`, 8000);
+      console.error('[ObsidianCode] Image generation error:', err);
+    }
   }
 
 }
