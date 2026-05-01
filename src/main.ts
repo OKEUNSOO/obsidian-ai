@@ -67,10 +67,14 @@ export default class ObsidianCodePlugin extends Plugin {
     // Restore last active provider from settings
     if (this.settings.activeProvider) {
       this.providerManager.setProvider(this.settings.activeProvider);
+      this.storage.sessions.setProvider(this.settings.activeProvider);
     }
-    // Persist provider changes to settings
+    // Persist provider changes to settings and separate sessions per provider
     this.providerManager.onProviderChange(async (id) => {
       this.settings.activeProvider = id;
+      this.storage.sessions.setProvider(id);
+      // Reload conversations for the new provider
+      this.conversations = await this.storage.sessions.loadAllConversations();
       await this.saveSettings();
     });
 

@@ -588,6 +588,51 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
     const envSnippetsContainer = containerEl.createDiv({ cls: 'oc-env-snippets-container' });
     new EnvSnippetManager(envSnippetsContainer, this.plugin);
 
+    // Codex 설정 섹션
+    new Setting(containerEl).setName('Codex 설정').setHeading();
+
+    new Setting(containerEl)
+      .setName('Codex CLI 경로')
+      .setDesc('Codex CLI 실행 파일 경로. 비워두면 자동 감지. 터미널에서 "which codex" 출력값을 입력하세요.')
+      .addText((text) => {
+        text
+          .setPlaceholder('/usr/local/bin/codex')
+          .setValue(this.plugin.settings.codexCliPath || '')
+          .onChange(async (value) => {
+            this.plugin.settings.codexCliPath = value.trim();
+            await this.plugin.saveSettings();
+          });
+        text.inputEl.style.width = '100%';
+      });
+
+    new Setting(containerEl)
+      .setName('Codex 모델')
+      .setDesc('사용할 Codex 모델. 비워두면 기본 모델 사용.')
+      .addText((text) => {
+        text
+          .setPlaceholder('o4-mini')
+          .setValue(this.plugin.settings.codexModel || '')
+          .onChange(async (value) => {
+            this.plugin.settings.codexModel = value.trim();
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Codex 추론 강도')
+      .setDesc('Codex의 추론 노력 수준을 설정합니다.')
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption('low', '낮음 (low) — 빠름')
+          .addOption('medium', '보통 (medium) — 균형')
+          .addOption('high', '높음 (high) — 정확')
+          .setValue(this.plugin.settings.codexReasoningEffort || 'medium')
+          .onChange(async (value) => {
+            this.plugin.settings.codexReasoningEffort = value as 'low' | 'medium' | 'high';
+            await this.plugin.saveSettings();
+          });
+      });
+
     // 고급 섹션
     new Setting(containerEl).setName('고급').setHeading();
 
