@@ -1,9 +1,5 @@
 # ObsidianAI
 
-[![YouTube](https://img.shields.io/badge/YouTube-배움의달인-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/@%EB%B0%B0%EC%9B%80%EC%9D%98%EB%8B%AC%EC%9D%B8-p5v)
-[![X Follow](https://img.shields.io/badge/X-@reallygood83-black?style=for-the-badge&logo=x)](https://x.com/reallygood83)
-[![GitHub](https://img.shields.io/badge/GitHub-OKEUNSOO-blue?style=for-the-badge&logo=github)](https://github.com/OKEUNSOO)
-
 옵시디언(Obsidian) 사이드바에서 **Claude**와 **Codex**를 탭으로 자유롭게 넘나드는 통합 AI 어시스턴트.  
 각 AI는 독립적인 대화 히스토리를 유지하며, 파일 읽기/쓰기/터미널 실행까지 직접 처리합니다.
 
