@@ -69,12 +69,34 @@ export class StreamController {
   /** Processes a stream chunk and updates the message. */
   async handleStreamChunk(chunk: StreamChunk, msg: ChatMessage): Promise<void> {
     const { state, plugin } = this.deps;
+    const isCodex = plugin.providerManager?.activeProvider === 'codex';
 
     // Route subagent chunks
     if ('parentToolUseId' in chunk && chunk.parentToolUseId) {
       await this.handleSubagentChunk(chunk, msg);
       this.scrollToBottom();
       return;
+    }
+
+    // Update Codex timeline for specific events
+    if (isCodex && state.codexTimelineEl) {
+      switch (chunk.type) {
+        case 'text':
+          if (!state.codexTextStarted) {
+            this.addCodexTimelineStep('Analyzing request');
+            state.codexTextStarted = true;
+          }
+          break;
+        case 'tool_use':
+          if ('name' in chunk) {
+            const toolName = (chunk as any).name?.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Tool';
+            this.addCodexTimelineStep(`Using ${toolName}`);
+          }
+          break;
+        case 'error':
+          this.addCodexTimelineStep('Error occurred', true);
+          break;
+      }
     }
 
     switch (chunk.type) {
@@ -684,19 +706,34 @@ export class StreamController {
     state.thinkingEl = parentEl.createDiv({ cls: 'oc-thinking' });
     const isCodex = plugin.providerManager?.activeProvider === 'codex';
     if (isCodex) {
-      state.thinkingEl.addClass('oc-thinking-codex');
+      state.thinkingEl.addClass('oc-thinking-timeline');
+      // Initialize Codex timeline
+      state.codexTimeline = [];
+      state.codexTimelineEl = state.thinkingEl.createDiv({ cls: 'oc-codex-timeline' });
+      this.addCodexTimelineStep('Codex process started');
+    } else {
+      const statusText = FLAVOR_TEXTS[Math.floor(Math.random() * FLAVOR_TEXTS.length)];
+      state.thinkingEl.createSpan({ text: statusText });
+      state.thinkingEl.createSpan({ text: ' (esc to interrupt)', cls: 'oc-thinking-hint' });
+      // Queue indicator line (initially hidden)
+      state.queueIndicatorEl = state.thinkingEl.createDiv({ cls: 'oc-queue-indicator' });
+      this.deps.updateQueueIndicator();
     }
-    const statusText = isCodex
-      ? CODEX_STATUS_TEXT
-      : FLAVOR_TEXTS[Math.floor(Math.random() * FLAVOR_TEXTS.length)];
-    const hintText = isCodex ? CODEX_STATUS_HINT : ' (esc to interrupt)';
+  }
 
-    state.thinkingEl.createSpan({ text: statusText });
-    state.thinkingEl.createSpan({ text: hintText, cls: 'oc-thinking-hint' });
+  /** Adds a step to Codex timeline. */
+  addCodexTimelineStep(stepText: string, isComplete: boolean = false): void {
+    const { state } = this.deps;
+    if (!state.codexTimelineEl) return;
 
-    // Queue indicator line (initially hidden)
-    state.queueIndicatorEl = state.thinkingEl.createDiv({ cls: 'oc-queue-indicator' });
-    this.deps.updateQueueIndicator();
+    const stepEl = state.codexTimelineEl.createDiv({ cls: 'oc-timeline-step' });
+    const icon = isComplete ? '✓' : '→';
+    const iconEl = stepEl.createSpan({ cls: 'oc-timeline-icon', text: icon });
+    stepEl.createSpan({ cls: 'oc-timeline-text', text: stepText });
+
+    if (isComplete) {
+      stepEl.addClass('oc-timeline-complete');
+    }
   }
 
   /** Hides the thinking indicator. */
@@ -707,6 +744,8 @@ export class StreamController {
       state.thinkingEl = null;
     }
     state.queueIndicatorEl = null;
+    state.codexTimelineEl = null;
+    state.codexTimeline = [];
   }
 
   // ============================================

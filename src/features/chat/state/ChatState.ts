@@ -34,6 +34,9 @@ function createInitialState(): ChatStateData {
     currentThinkingState: null,
     thinkingEl: null,
     queueIndicatorEl: null,
+    codexTimelineEl: null,
+    codexTimeline: [],
+    codexTextStarted: false,
     toolCallElements: new Map(),
     activeSubagents: new Map(),
     asyncSubagentStates: new Map(),
@@ -184,6 +187,30 @@ export class ChatState {
 
   set queueIndicatorEl(value: HTMLElement | null) {
     this.state.queueIndicatorEl = value;
+  }
+
+  get codexTimelineEl(): HTMLElement | null {
+    return this.state.codexTimelineEl;
+  }
+
+  set codexTimelineEl(value: HTMLElement | null) {
+    this.state.codexTimelineEl = value;
+  }
+
+  get codexTimeline(): string[] {
+    return this.state.codexTimeline;
+  }
+
+  set codexTimeline(value: string[]) {
+    this.state.codexTimeline = value;
+  }
+
+  get codexTextStarted(): boolean {
+    return this.state.codexTextStarted;
+  }
+
+  set codexTextStarted(value: boolean) {
+    this.state.codexTextStarted = value;
   }
 
   // ============================================

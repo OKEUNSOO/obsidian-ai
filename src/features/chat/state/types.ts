@@ -77,6 +77,10 @@ export interface ChatStateData {
   currentThinkingState: ThinkingBlockState | null;
   thinkingEl: HTMLElement | null;
   queueIndicatorEl: HTMLElement | null;
+  // Codex timeline tracking
+  codexTimelineEl: HTMLElement | null;
+  codexTimeline: string[];
+  codexTextStarted: boolean;
 
   // Tool and subagent tracking maps
   toolCallElements: Map<string, HTMLElement>;

@@ -320,13 +320,14 @@ export class InputController {
           prompt: promptToSend,
           cwd: vaultPath,
           activeNotePath: currentNotePath ?? undefined,
+          selectedText: editorContext?.selectedText ?? undefined,
         };
         for await (const event of plugin.codexProvider.query(providerQuery)) {
           if (state.cancelRequested) { wasInterrupted = true; break; }
           if (event.type === 'text' && event.content) {
             await streamController.appendText(event.content);
           } else if (event.type === 'progress' && event.content) {
-            await streamController.appendText(`\n_${event.content}_\n`);
+            streamController.addCodexTimelineStep(event.content);
           } else if (event.type === 'error' && event.content) {
             await streamController.appendText(`\n\n**Error:** ${event.content}`);
           }

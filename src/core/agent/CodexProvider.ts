@@ -63,13 +63,48 @@ export class CodexProvider {
   }
 
   private buildPrompt(input: ProviderQuery): string {
-    const parts = ['You are running inside an Obsidian vault. Keep edits vault-scoped unless explicitly told otherwise.'];
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const iso = new Date().toISOString().split('T')[0];
+
+    const system = `Today is ${today} (${iso}).
+
+You are an expert AI assistant embedded in an Obsidian vault. You help the user manage their knowledge base, write and edit notes, analyze content, and execute multi-step tasks.
+
+## Core Principles
+1. **Obsidian Native**: You understand Markdown, YAML frontmatter, Wiki-links ([[note]]), tags, and Obsidian conventions.
+2. **Safety First**: Never overwrite data without understanding context. Prefer targeted edits over full rewrites.
+3. **Precision**: Changes are minimal and purposeful. No unnecessary modifications.
+4. **Completeness**: Complete the full task before responding.
+
+## Path Rules
+- Vault files: use RELATIVE paths (e.g., \`notes/my-note.md\`, \`.\`)
+- Do NOT use absolute paths for vault file operations
+- Working directory is the vault root: ${input.cwd}
+
+## Obsidian Conventions
+- Files are Markdown (.md) with optional YAML frontmatter at the top
+- Internal links: \`[[note-name]]\` or \`[[folder/note-name]]\`
+- Tags: \`#tag-name\`
+- When referencing vault files in responses, use wiki-link format so users can click them: \`[[folder/note.md]]\`
+
+## Output Rules
+- Be concise and direct. No filler phrases like "Sure!", "Of course!", "Certainly!".
+- Format responses in Markdown.
+- For multi-step tasks, show progress clearly.
+- Confirm what was created or changed after completing file operations.`;
+
+    const parts: string[] = [system];
+
     if (input.activeNotePath && input.activeNoteContent) {
       parts.push(`\n\n<active_obsidian_note path="${input.activeNotePath}">\n${input.activeNoteContent}\n</active_obsidian_note>`);
+    } else if (input.activeNotePath) {
+      parts.push(`\n\nThe user is currently viewing: ${input.activeNotePath}`);
     }
+
     if (input.selectedText) {
       parts.push(`\n\n<selected_text>\n${input.selectedText}\n</selected_text>`);
     }
+
     parts.push(`\n\n<user_request>\n${input.prompt}\n</user_request>`);
     return parts.join('');
   }
@@ -129,11 +164,13 @@ export class CodexProvider {
 
   private formatProgress(line: string): string {
     const cleaned = line.replace(/\[[0-9;?]*[ -/]*[@-~]/g, '').trim();
-    if (!cleaned || /^(user|codex)$/i.test(cleaned) || /^[┌└├│─╭╰]/.test(cleaned)) return '';
-    if (/^(•|-) /i.test(cleaned)) return cleaned.slice(0, 240);
-    if (/^(tokens used|OpenAI Codex|workdir:|model:|approval:|sandbox:|session id:)\b/i.test(cleaned)) return cleaned;
-    if (/\bERROR\b/.test(cleaned)) return cleaned;
-    if (/^(read|write|edit|run|exec|search|create|delete|build|test|commit)\b/i.test(cleaned)) return cleaned.slice(0, 240);
-    return '';
+    if (!cleaned) return '';
+    // Skip pure UI chrome (box-drawing chars, bare role labels)
+    if (/^[┌└├│─╭╰╮╯┤┬┴┼]/.test(cleaned)) return '';
+    if (/^(user|codex)$/i.test(cleaned)) return '';
+    // Skip low-value metadata
+    if (/^(session id:|workdir:)\s/i.test(cleaned)) return '';
+    // Pass everything else through
+    return cleaned.slice(0, 300);
   }
 }
