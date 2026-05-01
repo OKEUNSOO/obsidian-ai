@@ -91,3 +91,7 @@ sandbox/
 # yarn.lock
 # package-lock.json
 .claude/
+
+# Agent state and planning docs
+.omc/
+docs/superpowers/
