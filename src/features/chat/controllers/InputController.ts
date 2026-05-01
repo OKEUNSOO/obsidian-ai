@@ -9,6 +9,7 @@ import type { Component } from 'obsidian';
 import { Notice } from 'obsidian';
 
 import type { ExitPlanModeDecision } from '../../../core/agent/ObsidianCodeService';
+import type { ProviderQuery } from '../../../core/agent/types';
 import type { SlashCommandManager } from '../../../core/commands';
 import { isCommandBlocked } from '../../../core/security/BlocklistChecker';
 import { TOOL_BASH } from '../../../core/tools/toolNames';
@@ -313,12 +314,31 @@ export class InputController {
 
     let wasInterrupted = false;
     try {
-      for await (const chunk of plugin.agentService.query(promptToSend, imagesForMessage, state.messages, queryOptions)) {
-        if (state.cancelRequested) {
-          wasInterrupted = true;
-          break;
+      if (plugin.providerManager?.activeProvider === 'codex') {
+        const vaultPath = (plugin.app.vault.adapter as any).basePath as string;
+        const providerQuery: ProviderQuery = {
+          prompt: promptToSend,
+          cwd: vaultPath,
+          activeNotePath: currentNotePath ?? undefined,
+        };
+        for await (const event of plugin.codexProvider.query(providerQuery)) {
+          if (state.cancelRequested) { wasInterrupted = true; break; }
+          if (event.type === 'text' && event.content) {
+            await streamController.appendText(event.content);
+          } else if (event.type === 'progress' && event.content) {
+            await streamController.appendText(`\n_${event.content}_\n`);
+          } else if (event.type === 'error' && event.content) {
+            await streamController.appendText(`\n\n**Error:** ${event.content}`);
+          }
         }
-        await streamController.handleStreamChunk(chunk, assistantMsg);
+      } else {
+        for await (const chunk of plugin.agentService.query(promptToSend, imagesForMessage, state.messages, queryOptions)) {
+          if (state.cancelRequested) {
+            wasInterrupted = true;
+            break;
+          }
+          await streamController.handleStreamChunk(chunk, assistantMsg);
+        }
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
