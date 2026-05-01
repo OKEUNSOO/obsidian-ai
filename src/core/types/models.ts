@@ -12,6 +12,14 @@ export const DEFAULT_CLAUDE_MODELS: { value: ClaudeModel; label: string; descrip
   { value: 'opus', label: 'Opus', description: 'Claude Opus (Latest via CLI)' },
 ];
 
+/** Default Codex model options. */
+export const DEFAULT_CODEX_MODELS: { value: string; label: string; description: string }[] = [
+  { value: 'gpt-5.5', label: 'GPT-5.5', description: 'Codex default model' },
+  { value: 'gpt-5.4', label: 'GPT-5.4', description: 'Strong everyday coding model' },
+  { value: 'gpt-5.4-mini', label: '5.4 Mini', description: 'Fast, cost-efficient model' },
+  { value: 'gpt-5.3-codex', label: 'Codex 5.3', description: 'Coding-optimized model' },
+];
+
 /** Extended thinking token budget levels. */
 export type ThinkingBudget = 'off' | 'low' | 'medium' | 'high' | 'xhigh';
 

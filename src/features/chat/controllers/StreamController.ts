@@ -34,7 +34,7 @@ import {
   updateToolCallResult,
   updateWriteEditWithDiff,
 } from '../../../ui';
-import { FLAVOR_TEXTS } from '../constants';
+import { CODEX_STATUS_HINT, CODEX_STATUS_TEXT, FLAVOR_TEXTS } from '../constants';
 import type { MessageRenderer } from '../rendering/MessageRenderer';
 import type { AsyncSubagentManager } from '../services/AsyncSubagentManager';
 import type { ChatState } from '../state/ChatState';
@@ -672,7 +672,7 @@ export class StreamController {
 
   /** Shows the thinking indicator. */
   showThinkingIndicator(parentEl: HTMLElement): void {
-    const { state } = this.deps;
+    const { plugin, state } = this.deps;
 
     if (state.thinkingEl) {
       // Re-append to ensure it's at the bottom
@@ -682,9 +682,17 @@ export class StreamController {
     }
 
     state.thinkingEl = parentEl.createDiv({ cls: 'oc-thinking' });
-    const randomText = FLAVOR_TEXTS[Math.floor(Math.random() * FLAVOR_TEXTS.length)];
-    state.thinkingEl.createSpan({ text: randomText });
-    state.thinkingEl.createSpan({ text: ' (esc to interrupt)', cls: 'oc-thinking-hint' });
+    const isCodex = plugin.providerManager?.activeProvider === 'codex';
+    if (isCodex) {
+      state.thinkingEl.addClass('oc-thinking-codex');
+    }
+    const statusText = isCodex
+      ? CODEX_STATUS_TEXT
+      : FLAVOR_TEXTS[Math.floor(Math.random() * FLAVOR_TEXTS.length)];
+    const hintText = isCodex ? CODEX_STATUS_HINT : ' (esc to interrupt)';
+
+    state.thinkingEl.createSpan({ text: statusText });
+    state.thinkingEl.createSpan({ text: hintText, cls: 'oc-thinking-hint' });
 
     // Queue indicator line (initially hidden)
     state.queueIndicatorEl = state.thinkingEl.createDiv({ cls: 'oc-queue-indicator' });

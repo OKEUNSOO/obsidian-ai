@@ -10,7 +10,7 @@ import { ItemView, setIcon } from 'obsidian';
 
 import { SlashCommandManager } from '../../core/commands';
 import type { ClaudeModel, ThinkingBudget } from '../../core/types';
-import { DEFAULT_CLAUDE_MODELS, DEFAULT_THINKING_BUDGET, VIEW_TYPE_OBSIDIAN_CODE } from '../../core/types';
+import { DEFAULT_CLAUDE_MODELS, DEFAULT_CODEX_MODELS, DEFAULT_THINKING_BUDGET, VIEW_TYPE_OBSIDIAN_CODE } from '../../core/types';
 import type ObsidianCodePlugin from '../../main';
 import {
   cleanupThinkingBlock,
@@ -91,6 +91,7 @@ export class ObsidianCodeView extends ItemView {
   private planBanner: PlanBanner | null = null;
   private todoPanel: TodoPanel | null = null;
   private providerControl: ProviderSegmentedControl | null = null;
+  private auxButtonsRow: HTMLElement | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ObsidianCodePlugin) {
     super(leaf);
@@ -132,6 +133,9 @@ export class ObsidianCodeView extends ItemView {
       container.dataset.provider = pm.activeProvider;
       pm.onProviderChange((id) => {
         container.dataset.provider = id;
+        this.modelSelector?.updateDisplay();
+        this.modelSelector?.renderOptions();
+        this.updateAuxButtonsVisibility();
         void this.conversationController?.loadActive();
       });
     }
@@ -209,6 +213,7 @@ export class ObsidianCodeView extends ItemView {
     this.titleGenerationService = null;
     this.todoPanel?.destroy();
     this.todoPanel = null;
+    this.auxButtonsRow = null;
 
     // Cleanup async subagents
     this.asyncSubagentManager.orphanAllActive();
@@ -333,7 +338,10 @@ export class ObsidianCodeView extends ItemView {
     const inputToolbar = this.inputWrapper.createDiv({ cls: 'oc-input-toolbar' });
     const toolbarComponents = createInputToolbar(inputToolbar, {
       getSettings: () => ({
-        model: this.plugin.settings.model,
+        provider: this.plugin.providerManager?.activeProvider ?? 'claude',
+        model: this.plugin.providerManager?.activeProvider === 'codex'
+          ? this.plugin.settings.codexModel || DEFAULT_CODEX_MODELS[0].value
+          : this.plugin.settings.model,
         thinkingBudget: this.plugin.settings.thinkingBudget,
         permissionMode: this.plugin.settings.permissionMode,
         lastNonPlanPermissionMode: this.plugin.settings.lastNonPlanPermissionMode,
@@ -342,6 +350,14 @@ export class ObsidianCodeView extends ItemView {
       isAgentInitiatedPlanMode: () => this.state.planModeState?.agentInitiated ?? false,
       isPlanModeRequested: () => this.state.planModeRequested,
       onModelChange: async (model: ClaudeModel) => {
+        if (this.plugin.providerManager?.activeProvider === 'codex') {
+          this.plugin.settings.codexModel = model;
+          await this.plugin.saveSettings();
+          this.modelSelector?.updateDisplay();
+          this.modelSelector?.renderOptions();
+          return;
+        }
+
         this.plugin.settings.model = model;
         const isDefaultModel = DEFAULT_CLAUDE_MODELS.find((m: any) => m.value === model);
         if (isDefaultModel) {
@@ -411,6 +427,7 @@ export class ObsidianCodeView extends ItemView {
 
     // Aux buttons row (image generation + memory map)
     const auxRow = inputContainerEl.createDiv({ cls: 'oc-aux-buttons' });
+    this.auxButtonsRow = auxRow;
 
     const imgBtn = auxRow.createEl('button', { cls: 'oc-aux-btn', text: '🎨 이미지 생성' });
     imgBtn.addEventListener('click', () => {
@@ -427,6 +444,8 @@ export class ObsidianCodeView extends ItemView {
       await svc.build();
       new Notice('메모리맵 빌드 완료');
     });
+
+    this.updateAuxButtonsVisibility();
   }
 
   // ============================================
@@ -659,6 +678,12 @@ export class ObsidianCodeView extends ItemView {
     const isPlanMode = this.plugin.settings.permissionMode === 'plan';
     const isPlanModeRequested = this.state.planModeRequested;
     this.permissionToggle?.setPlanModeActive(isPlanMode || isPlanModeRequested);
+  }
+
+  private updateAuxButtonsVisibility(): void {
+    if (!this.auxButtonsRow) return;
+    const isCodex = this.plugin.providerManager?.activeProvider === 'codex';
+    this.auxButtonsRow.style.display = isCodex ? '' : 'none';
   }
 
 }

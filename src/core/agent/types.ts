@@ -35,4 +35,5 @@ export interface ProviderQuery {
   activeNotePath?: string;
   activeNoteContent?: string;
   selectedText?: string;
+  modelOverride?: string;
 }

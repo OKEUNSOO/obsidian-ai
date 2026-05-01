@@ -11,6 +11,7 @@ import { Notice, Plugin } from 'obsidian';
 import { CodexProvider } from './core/agent/CodexProvider';
 import { ObsidianCodeService } from './core/agent/ObsidianCodeService';
 import { ProviderManager } from './core/agent/ProviderManager';
+import type { ProviderId } from './core/agent/types';
 import { deleteCachedImages } from './core/images/imageCache';
 import { MemoryMapService } from './core/memory/MemoryMapService';
 import { StorageService } from './core/storage';
@@ -46,6 +47,7 @@ export default class ObsidianCodePlugin extends Plugin {
   memoryMapService: MemoryMapService;
   private conversations: Conversation[] = [];
   private activeConversationId: string | null = null;
+  private activeConversationIds: Partial<Record<ProviderId, string | null>> = {};
   private runtimeEnvironmentVariables = '';
   private hasNotifiedEnvChange = false;
 
@@ -66,16 +68,23 @@ export default class ObsidianCodePlugin extends Plugin {
     this.codexProvider = new CodexProvider(() => this.settings);
     // Restore last active provider from settings
     if (this.settings.activeProvider) {
-      this.providerManager.setProvider(this.settings.activeProvider);
+      await this.providerManager.setProvider(this.settings.activeProvider);
       this.storage.sessions.setProvider(this.settings.activeProvider);
     }
     // Persist provider changes to settings and separate sessions per provider
-    this.providerManager.onProviderChange(async (id) => {
+    this.providerManager.onProviderChange(async (id, previousId) => {
+      this.activeConversationIds[previousId] = this.activeConversationId;
       this.settings.activeProvider = id;
       this.storage.sessions.setProvider(id);
-      // Reload conversations for the new provider and reset active conversation
+      // Reload conversations for the new provider and restore its active conversation
       this.conversations = await this.storage.sessions.loadAllConversations();
-      this.activeConversationId = this.conversations[0]?.id ?? null;
+      const savedActiveId = this.activeConversationIds[id];
+      this.activeConversationId = savedActiveId &&
+        this.conversations.some(c => c.id === savedActiveId)
+        ? savedActiveId
+        : this.conversations[0]?.id ?? null;
+      this.activeConversationIds[id] = this.activeConversationId;
+      this.agentService.resetSession();
       await this.saveSettings();
     });
 
@@ -198,15 +207,27 @@ export default class ObsidianCodePlugin extends Plugin {
       slashCommands,
     };
 
+    const activeProvider = this.settings.activeProvider ?? 'claude';
+    this.storage.sessions.setProvider(activeProvider);
+
     // Load all conversations from session files
     this.conversations = await this.storage.sessions.loadAllConversations();
-    this.activeConversationId = state.activeConversationId;
+    this.activeConversationIds = {
+      ...(state.activeConversationIds ?? {}),
+    };
+
+    if (!this.activeConversationIds[activeProvider] && state.activeConversationId) {
+      this.activeConversationIds[activeProvider] = state.activeConversationId;
+    }
+
+    this.activeConversationId = this.activeConversationIds[activeProvider] ?? state.activeConversationId;
 
     // Validate active conversation exists
     if (this.activeConversationId &&
       !this.conversations.find(c => c.id === this.activeConversationId)) {
       this.activeConversationId = null;
     }
+    this.activeConversationIds[activeProvider] = this.activeConversationId;
 
     const backfilledConversations = this.backfillConversationResponseTimestamps();
 
@@ -257,6 +278,7 @@ export default class ObsidianCodePlugin extends Plugin {
     // Save state fields to data.json
     await this.storage.saveState({
       activeConversationId: this.activeConversationId,
+      activeConversationIds: this.activeConversationIds,
       lastEnvHash: this.settings.lastEnvHash || '',
       lastClaudeModel: this.settings.lastClaudeModel || 'haiku',
       lastCustomModel: this.settings.lastCustomModel || '',
@@ -441,11 +463,12 @@ export default class ObsidianCodePlugin extends Plugin {
 
     this.conversations.unshift(conversation);
     this.activeConversationId = conversation.id;
+    this.activeConversationIds[this.getActiveProvider()] = conversation.id;
     this.agentService.resetSession();
 
     // Save new conversation to session file
     await this.storage.sessions.saveConversation(conversation);
-    await this.storage.updateState({ activeConversationId: this.activeConversationId });
+    await this.persistActiveConversationState();
 
     return conversation;
   }
@@ -456,9 +479,10 @@ export default class ObsidianCodePlugin extends Plugin {
     if (!conversation) return null;
 
     this.activeConversationId = id;
+    this.activeConversationIds[this.getActiveProvider()] = id;
     this.agentService.setSessionId(conversation.sessionId);
 
-    await this.storage.updateState({ activeConversationId: this.activeConversationId });
+    await this.persistActiveConversationState();
     return conversation;
   }
 
@@ -529,6 +553,17 @@ export default class ObsidianCodePlugin extends Plugin {
       preview: this.getConversationPreview(c),
       titleGenerationStatus: c.titleGenerationStatus,
     }));
+  }
+
+  public getActiveProvider(): ProviderId {
+    return this.providerManager?.activeProvider ?? this.settings.activeProvider ?? 'claude';
+  }
+
+  private async persistActiveConversationState(): Promise<void> {
+    await this.storage.updateState({
+      activeConversationId: this.activeConversationId,
+      activeConversationIds: this.activeConversationIds,
+    });
   }
 
   /** Returns the active ObsidianCode view from workspace, if open. */

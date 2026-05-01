@@ -104,3 +104,7 @@ export const FLAVOR_TEXTS = [
   'Almost there...',
   'Give me a moment...',
 ];
+
+/** Status text shown while Codex is running. */
+export const CODEX_STATUS_TEXT = 'Codex 작업 중...';
+export const CODEX_STATUS_HINT = ' (esc로 중단)';

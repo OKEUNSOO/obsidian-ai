@@ -21,6 +21,7 @@ export {
 export {
   type ClaudeModel,
   DEFAULT_CLAUDE_MODELS,
+  DEFAULT_CODEX_MODELS,
   DEFAULT_THINKING_BUDGET,
   THINKING_BUDGETS,
   type ThinkingBudget,
@@ -52,6 +53,11 @@ export {
   type PlatformBlockedCommands,
   type SlashCommand,
 } from './settings';
+
+// Provider types
+export {
+  type ProviderId,
+} from '../agent/types';
 
 // Tool types
 export {

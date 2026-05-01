@@ -1,6 +1,6 @@
 import type { ProviderId } from './types';
 
-type ProviderChangeCallback = (id: ProviderId) => void;
+type ProviderChangeCallback = (id: ProviderId, previousId: ProviderId) => void | Promise<void>;
 
 export class ProviderManager {
   private _activeProvider: ProviderId = 'claude';
@@ -10,10 +10,13 @@ export class ProviderManager {
     return this._activeProvider;
   }
 
-  setProvider(id: ProviderId): void {
+  async setProvider(id: ProviderId): Promise<void> {
     if (this._activeProvider === id) return;
+    const previousId = this._activeProvider;
     this._activeProvider = id;
-    for (const cb of this.listeners) cb(id);
+    for (const cb of this.listeners) {
+      await cb(id, previousId);
+    }
   }
 
   onProviderChange(callback: ProviderChangeCallback): () => void {

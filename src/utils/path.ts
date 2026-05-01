@@ -239,89 +239,8 @@ function resolveClaudeFromPathEntries(
   return null;
 }
 
-/**
- * Gets the npm global prefix directory.
- * Returns null if npm is not available or prefix cannot be determined.
- */
-function getNpmGlobalPrefix(): string | null {
-  // Check npm prefix environment variable first (set by some npm configurations)
-  if (process.env.npm_config_prefix) {
-    return process.env.npm_config_prefix;
-  }
-
-  // Check common custom npm prefix locations on Windows
-  if (process.platform === 'win32') {
-    // Custom npm global paths are often configured via npm config
-    // Check %APPDATA%\npm first (default Windows npm global)
-    const appDataNpm = process.env.APPDATA
-      ? path.join(process.env.APPDATA, 'npm')
-      : null;
-    if (appDataNpm && fs.existsSync(appDataNpm)) {
-      return appDataNpm;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Builds the list of paths to search for cli.js in npm's node_modules.
- */
-function getNpmCliJsPaths(): string[] {
-  const homeDir = os.homedir();
-  const isWindows = process.platform === 'win32';
-  const cliJsPaths: string[] = [];
-
-  if (isWindows) {
-    // Default npm global path on Windows
-    cliJsPaths.push(
-      path.join(homeDir, 'AppData', 'Roaming', 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js')
-    );
-
-    // npm prefix from environment/config
-    const npmPrefix = getNpmGlobalPrefix();
-    if (npmPrefix) {
-      cliJsPaths.push(
-        path.join(npmPrefix, 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js')
-      );
-    }
-
-    // Common custom npm global directories on Windows
-    const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
-    const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
-
-    // Check common nodejs installation paths with custom npm global
-    cliJsPaths.push(
-      path.join(programFiles, 'nodejs', 'node_global', 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js'),
-      path.join(programFilesX86, 'nodejs', 'node_global', 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js')
-    );
-
-    // Also check D: drive which is commonly used for custom installations
-    cliJsPaths.push(
-      path.join('D:', 'Program Files', 'nodejs', 'node_global', 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js')
-    );
-  } else {
-    // Unix/macOS npm global paths
-    cliJsPaths.push(
-      path.join(homeDir, '.npm-global', 'lib', 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js'),
-      '/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js',
-      '/usr/lib/node_modules/@anthropic-ai/claude-code/cli.js'
-    );
-
-    // Check npm_config_prefix for custom npm global paths on Unix
-    if (process.env.npm_config_prefix) {
-      cliJsPaths.push(
-        path.join(process.env.npm_config_prefix, 'lib', 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js')
-      );
-    }
-  }
-
-  return cliJsPaths;
-}
-
 /** Finds Claude Code CLI executable from PATH or common install locations. */
 export function findClaudeCLIPath(pathValue?: string): string | null {
-  const homeDir = os.homedir();
   const isWindows = process.platform === 'win32';
 
   const customEntries = dedupePaths(parsePathEntries(pathValue));
@@ -333,76 +252,7 @@ export function findClaudeCLIPath(pathValue?: string): string | null {
     }
   }
 
-  // On Windows, prefer native .exe, then cli.js. Avoid .cmd fallback
-  // because it requires shell: true and breaks SDK stdio streaming.
-  if (isWindows) {
-    const exePaths: string[] = [
-      path.join(homeDir, '.claude', 'local', 'claude.exe'),
-      path.join(homeDir, 'AppData', 'Local', 'Claude', 'claude.exe'),
-      path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Claude', 'claude.exe'),
-      path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Claude', 'claude.exe'),
-      path.join(homeDir, '.local', 'bin', 'claude.exe'),
-    ];
-
-    for (const p of exePaths) {
-      if (isExistingFile(p)) {
-        return p;
-      }
-    }
-
-    const cliJsPaths = getNpmCliJsPaths();
-    for (const p of cliJsPaths) {
-      if (isExistingFile(p)) {
-        return p;
-      }
-    }
-
-  }
-
-  // Platform-specific search paths for native binaries and npm symlinks
-  const commonPaths: string[] = [
-    // Native binary paths (preferred)
-    path.join(homeDir, '.claude', 'local', 'claude'),
-    path.join(homeDir, '.local', 'bin', 'claude'),
-    path.join(homeDir, '.volta', 'bin', 'claude'),
-    path.join(homeDir, '.asdf', 'shims', 'claude'),
-    path.join(homeDir, '.asdf', 'bin', 'claude'),
-    '/usr/local/bin/claude',
-    '/opt/homebrew/bin/claude',
-    path.join(homeDir, 'bin', 'claude'),
-    // npm global bin symlinks (created by npm install -g)
-    path.join(homeDir, '.npm-global', 'bin', 'claude'),
-  ];
-
-  // Also check npm prefix bin directory
-  const npmPrefix = getNpmGlobalPrefix();
-  if (npmPrefix) {
-    commonPaths.push(path.join(npmPrefix, 'bin', 'claude'));
-  }
-
-  for (const p of commonPaths) {
-    if (isExistingFile(p)) {
-      return p;
-    }
-  }
-
-  // On Unix, also check for cli.js if binary not found
-  if (!isWindows) {
-    const cliJsPaths = getNpmCliJsPaths();
-    for (const p of cliJsPaths) {
-      if (isExistingFile(p)) {
-        return p;
-      }
-    }
-  }
-
-  const envEntries = dedupePaths(parsePathEntries(getEnvValue('PATH')));
-  if (envEntries.length > 0) {
-    const envResolution = resolveClaudeFromPathEntries(envEntries, isWindows);
-    if (envResolution) {
-      return envResolution;
-    }
-  }
+  // Global fallback disabled to prevent automatic loading of the global claude command.
 
   return null;
 }

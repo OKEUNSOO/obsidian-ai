@@ -199,13 +199,13 @@ export class SlashCommandSettings {
 
     const reloadBtn = actionsEl.createEl('button', {
       cls: 'oc-settings-action-btn',
-      attr: { 'aria-label': 'Reload from ~/.claude/commands/' },
+      attr: { 'aria-label': 'Reload project commands' },
     });
     setIcon(reloadBtn, 'refresh-cw');
     reloadBtn.addEventListener('click', async () => {
       await this.reloadCommands();
       this.render();
-      new Notice('Slash commands reloaded');
+      new Notice('Project slash commands reloaded');
     });
 
     const importBtn = actionsEl.createEl('button', {

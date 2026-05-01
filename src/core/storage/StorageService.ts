@@ -16,6 +16,7 @@ import type {
   ClaudeModel,
   Conversation,
   ObsidianCodeSettings,
+  ProviderId,
   SlashCommand,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../types';
@@ -31,6 +32,7 @@ export const CLAUDE_PATH = '.claude';
 /** Machine-specific state stored in Obsidian's data.json. */
 export interface PluginState {
   activeConversationId: string | null;
+  activeConversationIds?: Partial<Record<ProviderId, string | null>>;
   lastEnvHash: string;
   lastClaudeModel: ClaudeModel;
   lastCustomModel: ClaudeModel;
@@ -39,6 +41,7 @@ export interface PluginState {
 /** Default plugin state. */
 const DEFAULT_STATE: PluginState = {
   activeConversationId: null,
+  activeConversationIds: {},
   lastEnvHash: '',
   lastClaudeModel: 'haiku',
   lastCustomModel: '',
@@ -48,6 +51,7 @@ const DEFAULT_STATE: PluginState = {
 interface LegacyData extends ObsidianCodeSettings {
   conversations?: Conversation[];
   activeConversationId?: string;
+  activeConversationIds?: Partial<Record<ProviderId, string | null>>;
   migrationVersion?: number;
 }
 
@@ -112,6 +116,7 @@ export class StorageService {
       'conversations',
       'slashCommands',
       'activeConversationId',
+      'activeConversationIds',
       'lastEnvHash',
       'lastClaudeModel',
       'lastCustomModel',
@@ -156,6 +161,7 @@ export class StorageService {
     // 4. Update data.json to state-only format
     await this.saveState({
       activeConversationId: legacyData.activeConversationId || null,
+      activeConversationIds: legacyData.activeConversationIds || {},
       lastEnvHash: legacyData.lastEnvHash || '',
       lastClaudeModel: legacyData.lastClaudeModel || 'haiku',
       lastCustomModel: legacyData.lastCustomModel || '',
@@ -180,6 +186,7 @@ export class StorageService {
       const data = await this.plugin.loadData();
       return {
         activeConversationId: data?.activeConversationId ?? DEFAULT_STATE.activeConversationId,
+        activeConversationIds: data?.activeConversationIds ?? DEFAULT_STATE.activeConversationIds,
         lastEnvHash: data?.lastEnvHash ?? DEFAULT_STATE.lastEnvHash,
         lastClaudeModel: data?.lastClaudeModel ?? DEFAULT_STATE.lastClaudeModel,
         lastCustomModel: data?.lastCustomModel ?? DEFAULT_STATE.lastCustomModel,
@@ -214,10 +221,11 @@ export class StorageService {
       slashCommands: _,
       conversations: __,
       activeConversationId: ___,
-      lastEnvHash: ____,
-      lastClaudeModel: _____,
-      lastCustomModel: ______,
-      migrationVersion: _______,
+      activeConversationIds: ____,
+      lastEnvHash: _____,
+      lastClaudeModel: ______,
+      lastCustomModel: _______,
+      migrationVersion: ________,
       ...settingsFields
     } = legacyData;
 

@@ -9,10 +9,8 @@ import type { App } from 'obsidian';
 import { Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import { getCurrentPlatformKey } from '../../core/types';
-import { DEFAULT_CLAUDE_MODELS } from '../../core/types/models';
 import type ObsidianCodePlugin from '../../main';
 import { EnvSnippetManager, McpSettingsManager, SlashCommandSettings } from '../../ui';
-import { getModelsFromEnvironment, parseEnvironmentVariables } from '../../utils/env';
 import { expandHomePath } from '../../utils/path';
 import { getInstalledSkills, installObsidianSkills, installSkillFromUrl, isObsidianSkillsInstalled, removeSkill, uninstallObsidianSkills } from '../skills/ObsidianSkillsInstaller';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
@@ -78,6 +76,8 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass('oc-settings');
+
+    containerEl.createEl('h2', { text: '🌐 공통 설정', attr: { style: 'margin-top: 1em; margin-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); padding-bottom: 0.3em;' } });
 
     // 개인화 섹션
     new Setting(containerEl).setName('개인화').setHeading();
@@ -155,29 +155,6 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
           })
       );
 
-    if (this.plugin.settings.enableAutoTitleGeneration) {
-      new Setting(containerEl)
-        .setName('제목 생성 모델')
-        .setDesc('대화 제목 자동 생성에 사용할 모델.')
-        .addDropdown((dropdown) => {
-          dropdown.addOption('', '자동 (Haiku)');
-
-          const envVars = parseEnvironmentVariables(this.plugin.settings.environmentVariables);
-          const customModels = getModelsFromEnvironment(envVars);
-          const models = customModels.length > 0 ? customModels : DEFAULT_CLAUDE_MODELS;
-
-          for (const model of models) {
-            dropdown.addOption(model.value, model.label);
-          }
-
-          dropdown
-            .setValue(this.plugin.settings.titleGenerationModel || '')
-            .onChange(async (value) => {
-              this.plugin.settings.titleGenerationModel = value;
-              await this.plugin.saveSettings();
-            });
-        });
-    }
 
     new Setting(containerEl)
       .setName('Vim 스타일 탐색 키 매핑')
@@ -397,7 +374,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
     const slashCommandsDesc = containerEl.createDiv({ cls: 'oc-slash-settings-desc' });
     slashCommandsDesc.createEl('p', {
-      text: '/command로 실행되는 커스텀 프롬프트 템플릿을 만드세요. $ARGUMENTS(전체 인수), $1/$2(위치 인수), @file(파일 내용), !`bash`(명령 출력)를 사용할 수 있습니다.',
+      text: '이 vault의 .claude/commands 안에 저장되는 프로젝트 전용 /command 프롬프트 템플릿을 만드세요. $ARGUMENTS(전체 인수), $1/$2(위치 인수), @file(파일 내용), !`bash`(명령 출력)를 사용할 수 있습니다.',
       cls: 'setting-item-description',
     });
 
@@ -418,18 +395,6 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
     // 보안 섹션
     new Setting(containerEl).setName('보안').setHeading();
-
-    new Setting(containerEl)
-      .setName('사용자 Claude 설정 불러오기')
-      .setDesc('~/.claude/settings.json을 불러옵니다. 활성화 시 사용자의 Claude Code 권한 규칙이 Safe 모드를 우회할 수 있습니다.')
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.loadUserClaudeSettings)
-          .onChange(async (value) => {
-            this.plugin.settings.loadUserClaudeSettings = value;
-            await this.plugin.saveSettings();
-          })
-      );
 
     new Setting(containerEl)
       .setName('명령어 차단 목록 사용')
@@ -571,7 +536,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('커스텀 변수')
-      .setDesc('Claude SDK용 환경 변수 (KEY=VALUE 형식, 한 줄에 하나씩)')
+      .setDesc('API 요청용 환경 변수 (KEY=VALUE 형식, 한 줄에 하나씩)')
       .addTextArea((text) => {
         text
           .setPlaceholder('ANTHROPIC_API_KEY=your-key\nANTHROPIC_BASE_URL=https://api.example.com\nANTHROPIC_MODEL=custom-model')
@@ -588,8 +553,10 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
     const envSnippetsContainer = containerEl.createDiv({ cls: 'oc-env-snippets-container' });
     new EnvSnippetManager(envSnippetsContainer, this.plugin);
 
+    containerEl.createEl('h2', { text: '🤖 Codex 설정', attr: { style: 'margin-top: 2em; margin-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); padding-bottom: 0.3em;' } });
+
     // Codex 설정 섹션
-    new Setting(containerEl).setName('Codex 설정').setHeading();
+    new Setting(containerEl).setName('일반').setHeading();
 
     new Setting(containerEl)
       .setName('Codex CLI 경로')
@@ -633,8 +600,22 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
           });
       });
 
-    // 고급 섹션
-    new Setting(containerEl).setName('고급').setHeading();
+    containerEl.createEl('h2', { text: '🧠 Claude 설정', attr: { style: 'margin-top: 2em; margin-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); padding-bottom: 0.3em;' } });
+
+    // Claude 설정 섹션
+    new Setting(containerEl).setName('일반').setHeading();
+
+    new Setting(containerEl)
+      .setName('사용자 Claude 설정 불러오기')
+      .setDesc('~/.claude/settings.json을 불러옵니다. 활성화 시 사용자의 Claude Code 권한 규칙이 Safe 모드를 우회할 수 있습니다.')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.loadUserClaudeSettings)
+          .onChange(async (value) => {
+            this.plugin.settings.loadUserClaudeSettings = value;
+            await this.plugin.saveSettings();
+          })
+      );
 
     const cliPathDescription = (process.platform === 'win32'
       ? 'Claude Code CLI 경로를 직접 지정합니다. 비워두면 자동 감지. 네이티브 설치의 경우 claude.exe 사용. npm/pnpm/yarn 등 패키지 매니저 설치의 경우 cli.js 경로 사용 (claude.cmd 아님).'

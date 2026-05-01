@@ -127,6 +127,9 @@ function createMockDeps(): StreamControllerDeps {
       settings: {
         permissionMode: 'yolo',
       },
+      providerManager: {
+        activeProvider: 'claude',
+      },
       app: {
         vault: {
           adapter: {
@@ -178,6 +181,19 @@ describe('StreamController - Text Content', () => {
     deps = createMockDeps();
     controller = new StreamController(deps);
     deps.state.currentContentEl = createMockElement();
+  });
+
+  describe('Thinking indicator', () => {
+    it('shows a Codex-specific running status when Codex is active', () => {
+      (deps.plugin as any).providerManager.activeProvider = 'codex';
+      const parentEl = createMockElement();
+
+      controller.showThinkingIndicator(parentEl);
+
+      expect(deps.state.thinkingEl?.hasClass('oc-thinking-codex')).toBe(true);
+      expect(deps.state.thinkingEl?.children[0].textContent).toBe('Codex 작업 중...');
+      expect(deps.state.thinkingEl?.children[1].textContent).toBe(' (esc로 중단)');
+    });
   });
 
   describe('Text streaming', () => {

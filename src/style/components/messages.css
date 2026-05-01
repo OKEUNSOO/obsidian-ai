@@ -45,6 +45,7 @@
   background: rgba(80, 80, 80, 0.5);
   color: #ffffff;
   align-self: flex-end;
+  margin-right: 8px;
   border-bottom-right-radius: 4px;
 }
 

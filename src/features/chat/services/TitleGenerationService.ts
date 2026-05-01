@@ -8,6 +8,7 @@
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import { query as agentQuery } from '@anthropic-ai/claude-agent-sdk';
 
+import { CodexProvider } from '../../../core/agent/CodexProvider';
 import { TITLE_GENERATION_SYSTEM_PROMPT } from '../../../core/prompts/titleGeneration';
 import type ObsidianCodePlugin from '../../../main';
 import { getEnhancedPath, parseEnvironmentVariables } from '../../../utils/env';
@@ -58,8 +59,10 @@ export class TitleGenerationService {
       this.plugin.getActiveEnvironmentVariables()
     );
 
-    const resolvedClaudePath = this.plugin.getResolvedClaudeCliPath();
-    if (!resolvedClaudePath) {
+    const activeProvider = this.plugin.getActiveProvider();
+
+    const resolvedClaudePath = this.plugin.getResolvedClaudeCliPath() || undefined;
+    if (activeProvider === 'claude' && !resolvedClaudePath) {
       console.warn('[TitleGeneration] Claude CLI not found');
       await this.safeCallback(callback, conversationId, {
         success: false,
@@ -68,14 +71,12 @@ export class TitleGenerationService {
       return;
     }
 
-    // Get the appropriate model with fallback chain:
-    // 1. User's titleGenerationModel setting (if set)
-    // 2. ANTHROPIC_DEFAULT_HAIKU_MODEL env var
-    // 3. claude-haiku-4-5 default
-    const titleModel =
-      this.plugin.settings.titleGenerationModel ||
-      envVars.ANTHROPIC_DEFAULT_HAIKU_MODEL ||
-      'claude-haiku-4-5';
+    // Get the appropriate model:
+    // 1. ANTHROPIC_DEFAULT_HAIKU_MODEL env var
+    // 2. Provider-specific default (Codex Mini or Claude Haiku)
+    const defaultAutoModel = activeProvider === 'codex' ? 'gpt-5.4-mini' : 'haiku';
+
+    const titleModel = envVars.ANTHROPIC_DEFAULT_HAIKU_MODEL || defaultAutoModel;
 
     // Cancel any existing generation for this conversation
     const existingController = this.activeGenerations.get(conversationId);
@@ -120,21 +121,45 @@ Generate a title for this conversation:`;
     };
 
     try {
-      const response = agentQuery({ prompt, options });
       let responseText = '';
 
-      for await (const message of response) {
-        if (abortController.signal.aborted) {
-          await this.safeCallback(callback, conversationId, {
-            success: false,
-            error: 'Cancelled',
-          });
-          return;
+      if (activeProvider === 'codex') {
+        const queryOptions = {
+          prompt: `System Instruction: ${TITLE_GENERATION_SYSTEM_PROMPT}\n\n${prompt}`,
+          cwd: vaultPath,
+          modelOverride: titleModel,
+        };
+        const tempCodexProvider = new CodexProvider(() => this.plugin.settings);
+        for await (const event of tempCodexProvider.query(queryOptions)) {
+          if (abortController.signal.aborted) {
+            tempCodexProvider.cancel();
+            await this.safeCallback(callback, conversationId, {
+              success: false,
+              error: 'Cancelled',
+            });
+            return;
+          }
+          if (event.type === 'text') {
+            responseText += event.content || '';
+          } else if (event.type === 'error') {
+            throw new Error(event.content);
+          }
         }
+      } else {
+        const response = agentQuery({ prompt, options });
+        for await (const message of response) {
+          if (abortController.signal.aborted) {
+            await this.safeCallback(callback, conversationId, {
+              success: false,
+              error: 'Cancelled',
+            });
+            return;
+          }
 
-        const text = this.extractTextFromMessage(message);
-        if (text) {
-          responseText += text;
+          const text = this.extractTextFromMessage(message);
+          if (text) {
+            responseText += text;
+          }
         }
       }
 

@@ -8,11 +8,13 @@ import type {
   ClaudeModel,
   ObsidianCodeMcpServer,
   PermissionMode,
+  ProviderId,
   ThinkingBudget,
   UsageInfo
 } from '../../core/types';
 import {
   DEFAULT_CLAUDE_MODELS,
+  DEFAULT_CODEX_MODELS,
   THINKING_BUDGETS
 } from '../../core/types';
 import { CHECK_ICON_SVG, MCP_ICON_SVG } from '../../features/chat/constants';
@@ -23,6 +25,7 @@ import { findConflictingPath } from '../../utils/externalContext';
 /** Settings access interface for toolbar components. */
 export interface ToolbarSettings {
   model: ClaudeModel;
+  provider?: ProviderId;
   thinkingBudget: ThinkingBudget;
   permissionMode: PermissionMode;
   lastNonPlanPermissionMode?: 'yolo' | 'normal';
@@ -57,6 +60,11 @@ export class ModelSelector {
   /** Returns available models (custom from env vars, or defaults). */
   private getAvailableModels() {
     let models: { value: string; label: string; description: string }[] = [];
+    const provider = this.callbacks.getSettings().provider ?? 'claude';
+
+    if (provider === 'codex') {
+      return [...DEFAULT_CODEX_MODELS];
+    }
 
     if (this.callbacks.getEnvironmentVariables) {
       const envVarsStr = this.callbacks.getEnvironmentVariables();

@@ -21,7 +21,9 @@ export class ProviderSegmentedControl {
       btn.dataset.active = String(id === providerManager.activeProvider);
       btn.createSpan({ text: theme.icon });
       btn.createSpan({ text: theme.label });
-      btn.addEventListener('click', () => this.providerManager.setProvider(id));
+      btn.addEventListener('click', () => {
+        void this.providerManager.setProvider(id);
+      });
       this.tabs.set(id, btn);
     }
 

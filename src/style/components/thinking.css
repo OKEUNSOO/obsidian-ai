@@ -1,10 +1,15 @@
 /* Thinking indicator */
 .oc-thinking {
-  color: #D97757;
+  color: var(--ai-primary, #D97757);
   font-style: italic;
   padding: 4px 0;
   text-align: left;
   animation: thinking-pulse 1.5s ease-in-out infinite;
+}
+
+.oc-thinking.oc-thinking-codex,
+.oc-container[data-provider="codex"] .oc-thinking {
+  color: #8B5CF6;
 }
 
 .oc-thinking-hint {
@@ -46,7 +51,7 @@
   flex: 1;
   font-size: 13px;
   font-weight: 500;
-  color: #D97757;
+  color: var(--ai-primary, #D97757);
 }
 
 /* Thinking block content - tree-branch style */

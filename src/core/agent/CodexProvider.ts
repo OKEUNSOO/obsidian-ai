@@ -33,7 +33,7 @@ export class CodexProvider {
       '--output-last-message', outputPath,
       '--skip-git-repo-check',
       '--cd', input.cwd,
-      '--model', settings.codexModel ?? 'gpt-5.5',
+      '--model', input.modelOverride ?? settings.codexModel ?? 'gpt-5.5',
       '--config', `model_reasoning_effort="${settings.codexReasoningEffort ?? 'medium'}"`,
     ];
 

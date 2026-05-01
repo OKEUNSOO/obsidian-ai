@@ -232,6 +232,24 @@ describe('SessionStorage JSONL format', () => {
   });
 });
 
+describe('Plugin state format', () => {
+  it('supports provider-specific active conversation ids', () => {
+    const state = {
+      activeConversationId: 'claude-conv',
+      activeConversationIds: {
+        claude: 'claude-conv',
+        codex: 'codex-conv',
+      },
+      lastEnvHash: '',
+      lastClaudeModel: 'haiku',
+      lastCustomModel: '',
+    };
+
+    expect(state.activeConversationIds.claude).toBe('claude-conv');
+    expect(state.activeConversationIds.codex).toBe('codex-conv');
+  });
+});
+
 // ============================================================================
 // SlashCommandStorage Tests
 // ============================================================================
@@ -458,6 +476,7 @@ describe('StorageService migration', () => {
       // activeConversationId is excluded from hasSettings check
       const stateOnlyData = {
         activeConversationId: 'conv-1',
+        activeConversationIds: { claude: 'conv-1', codex: 'conv-2' },
         lastEnvHash: 'hash',
         lastClaudeModel: 'haiku',
         lastCustomModel: 'custom',
@@ -673,6 +692,7 @@ function needsMigrationHelper(legacyData: any): boolean {
     'conversations',
     'slashCommands',
     'activeConversationId',
+    'activeConversationIds',
     'lastEnvHash',
     'lastClaudeModel',
     'lastCustomModel',
