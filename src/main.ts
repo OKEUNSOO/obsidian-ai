@@ -73,8 +73,9 @@ export default class ObsidianCodePlugin extends Plugin {
     this.providerManager.onProviderChange(async (id) => {
       this.settings.activeProvider = id;
       this.storage.sessions.setProvider(id);
-      // Reload conversations for the new provider
+      // Reload conversations for the new provider and reset active conversation
       this.conversations = await this.storage.sessions.loadAllConversations();
+      this.activeConversationId = this.conversations[0]?.id ?? null;
       await this.saveSettings();
     });
 

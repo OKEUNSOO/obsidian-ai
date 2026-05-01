@@ -130,7 +130,10 @@ export class ObsidianCodeView extends ItemView {
     if (pm) {
       this.providerControl = new ProviderSegmentedControl(container, pm);
       container.dataset.provider = pm.activeProvider;
-      pm.onProviderChange((id) => { container.dataset.provider = id; });
+      pm.onProviderChange((id) => {
+        container.dataset.provider = id;
+        void this.conversationController?.loadActive();
+      });
     }
 
     // Create plan banner (mounted to container, inserts before messages)
