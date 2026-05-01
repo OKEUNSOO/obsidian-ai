@@ -79,15 +79,15 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass('oc-settings');
 
-    // Customization section
-    new Setting(containerEl).setName('Customization').setHeading();
+    // 개인화 섹션
+    new Setting(containerEl).setName('개인화').setHeading();
 
     new Setting(containerEl)
-      .setName('What should ObsidianCode call you?')
-      .setDesc('Your name for personalized greetings (leave empty for generic greetings)')
+      .setName('이름')
+      .setDesc('개인화된 인사말에 사용할 이름을 입력하세요 (비워두면 일반 인사말 사용)')
       .addText((text) =>
         text
-          .setPlaceholder('Enter your name')
+          .setPlaceholder('이름 입력')
           .setValue(this.plugin.settings.userName)
           .onChange(async (value) => {
             this.plugin.settings.userName = value;
@@ -96,16 +96,16 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Excluded tags')
-      .setDesc('Notes with these tags will not auto-load as context (one per line, without #)')
+      .setName('제외 태그')
+      .setDesc('이 태그가 있는 노트는 자동으로 컨텍스트에 포함되지 않습니다 (한 줄에 하나씩, # 제외)')
       .addTextArea((text) => {
         text
           .setPlaceholder('system\nprivate\ndraft')
           .setValue(this.plugin.settings.excludedTags.join('\n'))
           .onChange(async (value) => {
             this.plugin.settings.excludedTags = value
-              .split(/\r?\n/)  // Handle both Unix (LF) and Windows (CRLF) line endings
-              .map((s) => s.trim().replace(/^#/, ''))  // Remove leading # if present
+              .split(/\r?\n/)
+              .map((s) => s.trim().replace(/^#/, ''))
               .filter((s) => s.length > 0);
             await this.plugin.saveSettings();
           });
@@ -114,8 +114,8 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName('Media folder')
-      .setDesc('Folder containing attachments/images. When notes use ![[image.jpg]], Claude will look here. Leave empty for vault root.')
+      .setName('미디어 폴더')
+      .setDesc('첨부 파일/이미지가 있는 폴더. ![[image.jpg]] 형식의 노트에서 Claude가 이 폴더를 참조합니다. 비워두면 볼트 루트 사용.')
       .addText((text) => {
         text
           .setPlaceholder('attachments')
@@ -128,11 +128,11 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName('Custom system prompt')
-      .setDesc('Additional instructions appended to the default system prompt')
+      .setName('커스텀 시스템 프롬프트')
+      .setDesc('기본 시스템 프롬프트에 추가할 지시사항')
       .addTextArea((text) => {
         text
-          .setPlaceholder('Add custom instructions here...')
+          .setPlaceholder('커스텀 지시사항을 입력하세요...')
           .setValue(this.plugin.settings.systemPrompt)
           .onChange(async (value) => {
             this.plugin.settings.systemPrompt = value;
@@ -143,8 +143,8 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName('Auto-generate conversation titles')
-      .setDesc('Automatically generate conversation titles after the first exchange.')
+      .setName('대화 제목 자동 생성')
+      .setDesc('첫 번째 대화 후 자동으로 대화 제목을 생성합니다.')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.enableAutoTitleGeneration)
@@ -157,13 +157,11 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
     if (this.plugin.settings.enableAutoTitleGeneration) {
       new Setting(containerEl)
-        .setName('Title generation model')
-        .setDesc('Model used for auto-generating conversation titles.')
+        .setName('제목 생성 모델')
+        .setDesc('대화 제목 자동 생성에 사용할 모델.')
         .addDropdown((dropdown) => {
-          // Add "Auto" option (empty string = use default logic)
-          dropdown.addOption('', 'Auto (Haiku)');
+          dropdown.addOption('', '자동 (Haiku)');
 
-          // Get available models from environment or defaults
           const envVars = parseEnvironmentVariables(this.plugin.settings.environmentVariables);
           const customModels = getModelsFromEnvironment(envVars);
           const models = customModels.length > 0 ? customModels : DEFAULT_CLAUDE_MODELS;
@@ -182,8 +180,8 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
     }
 
     new Setting(containerEl)
-      .setName('Vim-style navigation mappings')
-      .setDesc('One mapping per line. Format: "map <key> <action>" (actions: scrollUp, scrollDown, focusInput).')
+      .setName('Vim 스타일 탐색 키 매핑')
+      .setDesc('한 줄에 하나씩 입력. 형식: "map <키> <동작>" (동작: scrollUp, scrollDown, focusInput)')
       .addTextArea((text) => {
         let pendingValue = buildNavMappingText(this.plugin.settings.keyboardNavigation);
         let saveTimeout: number | null = null;
@@ -197,7 +195,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
           const result = parseNavMappings(pendingValue);
           if (!result.settings) {
             if (showError) {
-              new Notice(`Invalid navigation mappings: ${result.error}`);
+              new Notice(`잘못된 탐색 키 매핑: ${result.error}`);
               pendingValue = buildNavMappingText(this.plugin.settings.keyboardNavigation);
               text.setValue(pendingValue);
             }
@@ -235,33 +233,33 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
         });
       });
 
-    // Obsidian Skills section
-    new Setting(containerEl).setName('Obsidian Skills').setHeading();
+    // Obsidian 스킬 섹션
+    new Setting(containerEl).setName('Obsidian 스킬').setHeading();
 
     const skillsDesc = containerEl.createDiv({ cls: 'oc-skills-settings-desc' });
     skillsDesc.createEl('p', {
-      text: 'Install Obsidian-specific skills to help Claude understand Obsidian Flavored Markdown, wikilinks, callouts, properties, and JSON Canvas format.',
+      text: 'Obsidian 전용 스킬을 설치하여 Claude가 Obsidian Flavored Markdown, 위키링크, 콜아웃, 프로퍼티, JSON Canvas 형식을 더 잘 이해하도록 도와줍니다.',
       cls: 'setting-item-description',
     });
 
-    // Bundled Obsidian Skills (install/reinstall/remove)
+    // 번들 Obsidian 스킬 (설치/재설치/제거)
     const skillsInstalled = isObsidianSkillsInstalled(this.app);
     new Setting(containerEl)
-      .setName('Obsidian Skills')
+      .setName('Obsidian 스킬')
       .setDesc(skillsInstalled
-        ? '✅ Installed - Claude now understands Obsidian syntax better.'
-        : 'Not installed - Click to install skills for better Obsidian support.')
+        ? '✅ 설치됨 - Claude가 Obsidian 문법을 더 잘 이해합니다.'
+        : '미설치 - 클릭하여 Obsidian 지원 스킬을 설치하세요.')
       .addButton((button) => {
         if (skillsInstalled) {
           button
-            .setButtonText('Reinstall')
+            .setButtonText('재설치')
             .onClick(async () => {
               await installObsidianSkills(this.app);
               this.display();
             });
         } else {
           button
-            .setButtonText('Install Skills')
+            .setButtonText('스킬 설치')
             .setCta()
             .onClick(async () => {
               await installObsidianSkills(this.app);
@@ -272,7 +270,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
       .addButton((button) => {
         if (skillsInstalled) {
           button
-            .setButtonText('Remove')
+            .setButtonText('제거')
             .onClick(async () => {
               await uninstallObsidianSkills(this.app);
               this.display();
@@ -280,12 +278,12 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
         }
       });
 
-    // Install from GitHub
+    // GitHub에서 설치
     let skillUrl = '';
     let textInput: HTMLInputElement | null = null;
     new Setting(containerEl)
-      .setName('Install Skill from GitHub')
-      .setDesc('Enter a GitHub URL (repository URL or raw SKILL.md link) to install a custom skill.')
+      .setName('GitHub에서 스킬 설치')
+      .setDesc('GitHub URL(저장소 URL 또는 SKILL.md 링크)을 입력하여 커스텀 스킬을 설치하세요.')
       .addText(text => {
         textInput = text.inputEl;
         text
@@ -295,37 +293,36 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
           });
       })
       .addButton(btn => {
-        btn.setButtonText('Install')
+        btn.setButtonText('설치')
           .setCta()
           .onClick(async () => {
             if (!skillUrl) {
-              new Notice('Please enter a URL');
+              new Notice('URL을 입력해주세요');
               return;
             }
 
-            btn.setButtonText('Installing...').setDisabled(true);
+            btn.setButtonText('설치 중...').setDisabled(true);
 
             try {
               const success = await installSkillFromUrl(this.app, skillUrl);
               if (success) {
-                // Clear input and refresh to show new skill
                 if (textInput) textInput.value = '';
                 skillUrl = '';
                 this.display();
               }
             } finally {
-              btn.setButtonText('Install').setDisabled(false);
+              btn.setButtonText('설치').setDisabled(false);
             }
           });
       });
 
-    // Display all installed skills (including GitHub-installed ones)
+    // 설치된 스킬 목록 표시
     const installedSkills = getInstalledSkills(this.app);
 
     if (installedSkills.length > 0) {
       const installedSkillsDesc = containerEl.createDiv({ cls: 'oc-skills-installed-desc' });
       installedSkillsDesc.createEl('p', {
-        text: `Installed Skills (${installedSkills.length}):`,
+        text: `설치된 스킬 (${installedSkills.length}개):`,
         cls: 'setting-item-description',
       });
 
@@ -341,7 +338,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
         if (skill.isBuiltIn) {
           const builtInBadge = skillInfoEl.createSpan({ cls: 'oc-skills-builtin-badge' });
-          builtInBadge.setText('Built-in');
+          builtInBadge.setText('기본 제공');
         }
 
         const skillDescEl = skillInfoEl.createDiv({ cls: 'oc-skills-item-desc' });
@@ -349,82 +346,82 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
           ? skill.description.substring(0, 100) + '...'
           : skill.description);
 
-        // Only show individual remove button for custom (non-built-in) skills
+        // 커스텀 스킬만 개별 제거 버튼 표시
         if (!skill.isBuiltIn) {
           const removeBtn = skillItemEl.createEl('button', {
-            text: 'Remove',
+            text: '제거',
             cls: 'oc-skills-remove-btn',
           });
           removeBtn.addEventListener('click', async () => {
             await removeSkill(this.app, skill.name);
-            this.display(); // Refresh
+            this.display();
           });
         }
       }
     } else {
       const emptyEl = containerEl.createDiv({ cls: 'oc-skills-empty' });
-      emptyEl.setText('No skills installed. Install Obsidian Skills above or add custom skills from GitHub.');
+      emptyEl.setText('설치된 스킬이 없습니다. 위에서 Obsidian 스킬을 설치하거나 GitHub에서 커스텀 스킬을 추가하세요.');
     }
 
-    // Hotkeys section
-    new Setting(containerEl).setName('Hotkeys').setHeading();
+    // 단축키 섹션
+    new Setting(containerEl).setName('단축키').setHeading();
 
     const inlineEditCommandId = 'cc-obsidian:inline-edit';
     const inlineEditHotkey = getHotkeyForCommand(this.app, inlineEditCommandId);
     new Setting(containerEl)
-      .setName('Inline edit hotkey')
+      .setName('인라인 편집 단축키')
       .setDesc(inlineEditHotkey
-        ? `Current: ${inlineEditHotkey}`
-        : 'No hotkey set. Click to configure.')
+        ? `현재: ${inlineEditHotkey}`
+        : '단축키가 설정되지 않았습니다. 클릭하여 설정하세요.')
       .addButton((button) =>
         button
-          .setButtonText(inlineEditHotkey ? 'Change' : 'Set hotkey')
+          .setButtonText(inlineEditHotkey ? '변경' : '단축키 설정')
           .onClick(() => openHotkeySettings(this.app))
       );
 
     const openChatCommandId = 'cc-obsidian:open-view';
     const openChatHotkey = getHotkeyForCommand(this.app, openChatCommandId);
     new Setting(containerEl)
-      .setName('Open chat hotkey')
+      .setName('채팅 열기 단축키')
       .setDesc(openChatHotkey
-        ? `Current: ${openChatHotkey}`
-        : 'No hotkey set. Click to configure.')
+        ? `현재: ${openChatHotkey}`
+        : '단축키가 설정되지 않았습니다. 클릭하여 설정하세요.')
       .addButton((button) =>
         button
-          .setButtonText(openChatHotkey ? 'Change' : 'Set hotkey')
+          .setButtonText(openChatHotkey ? '변경' : '단축키 설정')
           .onClick(() => openHotkeySettings(this.app))
       );
 
-    // Slash Commands section
-    new Setting(containerEl).setName('Slash Commands').setHeading();
+    // 슬래시 커맨드 섹션
+    new Setting(containerEl).setName('슬래시 커맨드').setHeading();
 
     const slashCommandsDesc = containerEl.createDiv({ cls: 'oc-slash-settings-desc' });
     slashCommandsDesc.createEl('p', {
-      text: 'Create custom prompt templates triggered by /command. Use $ARGUMENTS for all arguments, $1/$2 for positional args, @file for file content, and !`bash` for command output.',
+      text: '/command로 실행되는 커스텀 프롬프트 템플릿을 만드세요. $ARGUMENTS(전체 인수), $1/$2(위치 인수), @file(파일 내용), !`bash`(명령 출력)를 사용할 수 있습니다.',
       cls: 'setting-item-description',
     });
 
     const slashCommandsContainer = containerEl.createDiv({ cls: 'oc-slash-commands-container' });
     new SlashCommandSettings(slashCommandsContainer, this.plugin);
 
-    // MCP Servers section
-    new Setting(containerEl).setName('MCP Servers').setHeading();
+    // MCP 서버 섹션
+    new Setting(containerEl).setName('MCP 서버').setHeading();
 
     const mcpDesc = containerEl.createDiv({ cls: 'oc-mcp-settings-desc' });
     mcpDesc.createEl('p', {
-      text: 'Configure Model Context Protocol servers to extend Claude\'s capabilities with external tools and data sources. Servers with context-saving mode require @mention to activate.',
+      text: 'Model Context Protocol 서버를 설정하여 외부 도구 및 데이터 소스로 Claude의 기능을 확장하세요. 컨텍스트 절약 모드의 서버는 @멘션 시에만 활성화됩니다.',
       cls: 'setting-item-description',
     });
 
     const mcpContainer = containerEl.createDiv({ cls: 'oc-mcp-container' });
     new McpSettingsManager(mcpContainer, this.plugin);
 
-    // Safety section
-    new Setting(containerEl).setName('Safety').setHeading();
+    // 보안 섹션
+    new Setting(containerEl).setName('보안').setHeading();
 
     new Setting(containerEl)
-      .setName('Load user Claude settings')
-      .setDesc('Load ~/.claude/settings.json. When enabled, user\'s Claude Code permission rules may bypass Safe mode.')
+      .setName('사용자 Claude 설정 불러오기')
+      .setDesc('~/.claude/settings.json을 불러옵니다. 활성화 시 사용자의 Claude Code 권한 규칙이 Safe 모드를 우회할 수 있습니다.')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.loadUserClaudeSettings)
@@ -435,8 +432,8 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Enable command blocklist')
-      .setDesc('Block potentially dangerous bash commands')
+      .setName('명령어 차단 목록 사용')
+      .setDesc('위험한 bash 명령어를 차단합니다')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.enableBlocklist)
@@ -451,10 +448,9 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
     const platformLabel = isWindows ? 'Windows' : 'Unix';
 
     new Setting(containerEl)
-      .setName(`Blocked commands (${platformLabel})`)
-      .setDesc(`Patterns to block on ${platformLabel} (one per line). Supports regex.`)
+      .setName(`차단 명령어 (${platformLabel})`)
+      .setDesc(`${platformLabel}에서 차단할 패턴 (한 줄에 하나씩). 정규식 지원.`)
       .addTextArea((text) => {
-        // Platform-aware placeholder
         const placeholder = isWindows
           ? 'del /s /q\nrd /s /q\nRemove-Item -Recurse -Force'
           : 'rm -rf\nchmod 777\nmkfs';
@@ -463,7 +459,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.blockedCommands[platformKey].join('\n'))
           .onChange(async (value) => {
             this.plugin.settings.blockedCommands[platformKey] = value
-              .split(/\r?\n/)  // Handle both Unix (LF) and Windows (CRLF) line endings
+              .split(/\r?\n/)
               .map((s) => s.trim())
               .filter((s) => s.length > 0);
             await this.plugin.saveSettings();
@@ -472,11 +468,11 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
         text.inputEl.cols = 40;
       });
 
-    // On Windows, show Unix blocklist too since Git Bash can run Unix commands
+    // Windows에서는 Git Bash 때문에 Unix 차단 목록도 표시
     if (isWindows) {
       new Setting(containerEl)
-        .setName('Blocked commands (Unix/Git Bash)')
-        .setDesc('Unix patterns also blocked on Windows because Git Bash can invoke them.')
+        .setName('차단 명령어 (Unix/Git Bash)')
+        .setDesc('Git Bash에서도 실행될 수 있으므로 Windows에서도 Unix 패턴을 차단합니다.')
         .addTextArea((text) => {
           text
             .setPlaceholder('rm -rf\nchmod 777\nmkfs')
@@ -494,10 +490,9 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
     }
 
     new Setting(containerEl)
-      .setName('Allowed export paths')
-      .setDesc('Paths outside the vault where files can be exported (one per line). Supports ~ for home directory.')
+      .setName('허용 내보내기 경로')
+      .setDesc('볼트 외부에서 파일을 내보낼 수 있는 경로 (한 줄에 하나씩). ~는 홈 디렉토리를 의미합니다.')
       .addTextArea((text) => {
-        // Platform-aware placeholder
         const placeholder = process.platform === 'win32'
           ? '~/Desktop\n~/Downloads\n%TEMP%'
           : '~/Desktop\n~/Downloads\n/tmp';
@@ -506,7 +501,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.allowedExportPaths.join('\n'))
           .onChange(async (value) => {
             this.plugin.settings.allowedExportPaths = value
-              .split(/\r?\n/)  // Handle both Unix (LF) and Windows (CRLF) line endings
+              .split(/\r?\n/)
               .map((s) => s.trim())
               .filter((s) => s.length > 0);
             await this.plugin.saveSettings();
@@ -517,7 +512,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
     const approvedDesc = containerEl.createDiv({ cls: 'oc-approved-desc' });
     approvedDesc.createEl('p', {
-      text: 'Actions that have been permanently approved (via "Always Allow"). These will not require approval in Safe mode.',
+      text: '"항상 허용"으로 영구 승인된 작업들입니다. Safe 모드에서도 승인 없이 실행됩니다.',
       cls: 'setting-item-description',
     });
 
@@ -525,7 +520,7 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
     if (permissions.length === 0) {
       const emptyEl = containerEl.createDiv({ cls: 'oc-approved-empty' });
-      emptyEl.setText('No approved actions yet. When you click "Always Allow" in the approval dialog, actions will appear here.');
+      emptyEl.setText('승인된 작업이 없습니다. 승인 대화상자에서 "항상 허용"을 클릭하면 여기에 표시됩니다.');
     } else {
       const listEl = containerEl.createDiv({ cls: 'oc-approved-list' });
 
@@ -544,39 +539,39 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
         dateEl.setText(new Date(action.approvedAt).toLocaleDateString());
 
         const removeBtn = itemEl.createEl('button', {
-          text: 'Remove',
+          text: '제거',
           cls: 'oc-approved-remove-btn',
         });
         removeBtn.addEventListener('click', async () => {
           this.plugin.settings.permissions =
             this.plugin.settings.permissions.filter((a) => a !== action);
           await this.plugin.saveSettings();
-          this.display(); // Refresh
+          this.display();
         });
       }
 
-      // Clear all button
+      // 전체 삭제 버튼
       new Setting(containerEl)
-        .setName('Clear all approved actions')
-        .setDesc('Remove all permanently approved actions')
+        .setName('승인된 작업 전체 삭제')
+        .setDesc('영구 승인된 모든 작업을 제거합니다')
         .addButton((button) =>
           button
-            .setButtonText('Clear all')
+            .setButtonText('전체 삭제')
             .setWarning()
             .onClick(async () => {
               this.plugin.settings.permissions = [];
               await this.plugin.saveSettings();
-              this.display(); // Refresh
+              this.display();
             })
         );
     }
 
-    // Environment Variables section
-    new Setting(containerEl).setName('Environment').setHeading();
+    // 환경 변수 섹션
+    new Setting(containerEl).setName('환경 변수').setHeading();
 
     new Setting(containerEl)
-      .setName('Custom variables')
-      .setDesc('Environment variables for Claude SDK (KEY=VALUE format, one per line)')
+      .setName('커스텀 변수')
+      .setDesc('Claude SDK용 환경 변수 (KEY=VALUE 형식, 한 줄에 하나씩)')
       .addTextArea((text) => {
         text
           .setPlaceholder('ANTHROPIC_API_KEY=your-key\nANTHROPIC_BASE_URL=https://api.example.com\nANTHROPIC_MODEL=custom-model')
@@ -589,23 +584,23 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
         text.inputEl.addClass('oc-settings-env-textarea');
       });
 
-    // Environment Snippets subsection
+    // 환경 변수 스니펫 섹션
     const envSnippetsContainer = containerEl.createDiv({ cls: 'oc-env-snippets-container' });
     new EnvSnippetManager(envSnippetsContainer, this.plugin);
 
-    // Advanced section
-    new Setting(containerEl).setName('Advanced').setHeading();
+    // 고급 섹션
+    new Setting(containerEl).setName('고급').setHeading();
 
     const cliPathDescription = (process.platform === 'win32'
-      ? 'Custom path to Claude Code CLI. Leave empty for auto-detection. For the native installer, use claude.exe. For npm/pnpm/yarn or other package manager installs, use the cli.js path (not claude.cmd).'
-      : 'Custom path to Claude Code CLI. Leave empty for auto-detection. Paste the output of "which claude" — works for both native and npm/pnpm/yarn installs.')
-      + ' **Note: You must install the Claude Code CLI (`npm install -g @anthropic-ai/claude-code`) and run it once in your terminal to authenticate via browser.**';
+      ? 'Claude Code CLI 경로를 직접 지정합니다. 비워두면 자동 감지. 네이티브 설치의 경우 claude.exe 사용. npm/pnpm/yarn 등 패키지 매니저 설치의 경우 cli.js 경로 사용 (claude.cmd 아님).'
+      : 'Claude Code CLI 경로를 직접 지정합니다. 비워두면 자동 감지. "which claude" 출력값을 붙여넣으세요 — 네이티브 및 npm/pnpm/yarn 설치 모두 지원.')
+      + ' **참고: Claude Code CLI(`npm install -g @anthropic-ai/claude-code`)를 설치하고 터미널에서 한 번 실행하여 브라우저 인증을 완료해야 합니다.**';
 
     const cliPathSetting = new Setting(containerEl)
-      .setName('Claude Code CLI path')
+      .setName('Claude Code CLI 경로')
       .setDesc(cliPathDescription);
 
-    // Create validation message element
+    // 유효성 검사 메시지 요소 생성
     const validationEl = containerEl.createDiv({ cls: 'oc-cli-path-validation' });
     validationEl.style.color = 'var(--text-error)';
     validationEl.style.fontSize = '0.85em';
@@ -615,22 +610,21 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
     const validatePath = (value: string): string | null => {
       const trimmed = value.trim();
-      if (!trimmed) return null; // Empty is valid (auto-detect)
+      if (!trimmed) return null; // 비어있으면 유효 (자동 감지)
 
       const expandedPath = expandHomePath(trimmed);
 
       if (!fs.existsSync(expandedPath)) {
-        return 'Path does not exist';
+        return '경로가 존재하지 않습니다';
       }
       const stat = fs.statSync(expandedPath);
       if (!stat.isFile()) {
-        return 'Path is a directory, not a file';
+        return '파일이 아닌 디렉토리입니다';
       }
       return null;
     };
 
     cliPathSetting.addText((text) => {
-      // Platform-aware placeholder
       const placeholder = process.platform === 'win32'
         ? 'D:\\nodejs\\node_global\\node_modules\\@anthropic-ai\\claude-code\\cli.js'
         : '/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js';
@@ -650,14 +644,14 @@ export class ObsidianCodeSettingTab extends PluginSettingTab {
 
           this.plugin.settings.claudeCliPath = value.trim();
           await this.plugin.saveSettings();
-          // Clear cached path so next query will use the new path
+          // 캐시된 경로 초기화 (다음 쿼리 시 새 경로 사용)
           this.plugin.cliResolver?.reset();
           this.plugin.agentService?.cleanup();
         });
       text.inputEl.addClass('oc-settings-cli-path-input');
       text.inputEl.style.width = '100%';
 
-      // Validate on initial load
+      // 초기 로드 시 유효성 검사
       const initialError = validatePath(this.plugin.settings.claudeCliPath || '');
       if (initialError) {
         validationEl.setText(initialError);
