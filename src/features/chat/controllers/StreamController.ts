@@ -34,7 +34,7 @@ import {
   updateToolCallResult,
   updateWriteEditWithDiff,
 } from '../../../ui';
-import { FLAVOR_TEXTS } from '../constants';
+import { CODEX_STATUS_HINT, CODEX_STATUS_TEXT, FLAVOR_TEXTS } from '../constants';
 import type { MessageRenderer } from '../rendering/MessageRenderer';
 import type { AsyncSubagentManager } from '../services/AsyncSubagentManager';
 import type { ChatState } from '../state/ChatState';
@@ -728,7 +728,7 @@ export class StreamController {
 
     const stepEl = state.codexTimelineEl.createDiv({ cls: 'oc-timeline-step' });
     const icon = isComplete ? '✓' : '→';
-    stepEl.createSpan({ cls: 'oc-timeline-icon', text: icon });
+    const iconEl = stepEl.createSpan({ cls: 'oc-timeline-icon', text: icon });
     stepEl.createSpan({ cls: 'oc-timeline-text', text: stepText });
 
     if (isComplete) {
